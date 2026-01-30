@@ -1,0 +1,104 @@
+@page
+@model MarchMadness.Web.Pages.Admin.SubmitForOthersModel
+@{
+    ViewData["Title"] = "Submit Bracket for Others";
+}
+
+<div class="container mt-4">
+    <h1>Submit Bracket for Someone Else</h1>
+    <p class="text-muted">As an admin, you can submit brackets on behalf of other users.</p>
+
+    @if (TempData["Message"] != null)
+    {
+        <div class="alert alert-success">@TempData["Message"]</div>
+    }
+
+    @if (!Model.Round1Games.Any(g => g.Team1Id.HasValue && g.Team2Id.HasValue))
+    {
+        <div class="alert alert-warning">
+            <strong>Tournament not set up yet.</strong>
+            <p>You need to add teams and assign them to games first.</p>
+            <a href="/Admin/Teams" class="btn btn-primary">Go to Team Management</a>
+        </div>
+    }
+    else
+    {
+        <form method="post" id="bracketForm">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="UserName" class="form-label">User Name</label>
+                            <input asp-for="UserName" class="form-control" required />
+                            <span asp-validation-for="UserName" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="BracketName" class="form-label">Bracket Name (Optional)</label>
+                            <input asp-for="BracketName" class="form-control" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Round 1 -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h3>Round 1 - Round of 64</h3>
+                </div>
+                <div class="card-body">
+                    @foreach (var region in new[] { "East", "West", "South", "Midwest" })
+                    {
+                        <h4 class="mt-3">@region Region</h4>
+                        <div class="row">
+                            @foreach (var game in Model.Round1Games.Where(g => g.Region == region))
+                            {
+                                if (game.Team1Id.HasValue && game.Team2Id.HasValue)
+                                {
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card">
+                                            <div class="card-body">
+                                                <strong>Game @game.GameNumber</strong>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="radio" 
+                                                           name="GamePicks[@game.Id]" 
+                                                           value="@game.Team1Id" 
+                                                           id="game_@(game.Id)_team1" required>
+                                                    <label class="form-check-label" for="game_@(game.Id)_team1">
+                                                        @game.Team1?.Name
+                                                    </label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="radio" 
+                                                           name="GamePicks[@game.Id]" 
+                                                           value="@game.Team2Id" 
+                                                           id="game_@(game.Id)_team2" required>
+                                                    <label class="form-check-label" for="game_@(game.Id)_team2">
+                                                        @game.Team2?.Name
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Simplified later rounds - similar pattern to SubmitBracket -->
+            <div class="alert alert-info">
+                <strong>Note:</strong> Fill out all rounds. Use dropdown selects for rounds 2-6 (you'll need to select teams that advance from earlier rounds).
+            </div>
+
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary btn-lg">Submit Bracket for User</button>
+                <a href="/Admin/Teams" class="btn btn-outline-secondary">Back to Admin</a>
+            </div>
+        </form>
+    }
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

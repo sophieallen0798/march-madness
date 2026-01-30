@@ -1,0 +1,62 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Home page";
+}
+
+<div class="text-center mt-5">
+    <h1 class="display-3">🏀 March Madness Tournament</h1>
+    <p class="lead">Fill out your bracket and compete with your coworkers!</p>
+
+    <div class="row mt-5">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h3>📝 Submit Your Bracket</h3>
+                    <p>Pick the winners for each game and submit your predictions</p>
+                    <a href="/SubmitBracket" class="btn btn-primary btn-lg">Submit Bracket</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h3>🏆 View Standings</h3>
+                    <p>See how your bracket compares to everyone else's</p>
+                    <a href="/Standings" class="btn btn-success btn-lg">View Standings</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h3>ℹ️ How It Works</h3>
+                    <p class="small text-start">
+                        <strong>Scoring:</strong><br />
+                        Round 1: 1 point per correct pick<br />
+                        Round 2: 2 points<br />
+                        Round 3: 4 points<br />
+                        Round 4: 8 points<br />
+                        Round 5: 16 points<br />
+                        Championship: 32 points
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        var adminUsers = new[] { "EVR\\sallen", "EVR\\sallen-t1" };
+        if (adminUsers.Contains(User.Identity?.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            <div class="alert alert-warning mt-5">
+                <h4>👨‍💼 Admin Controls</h4>
+                <p>You have administrator access. Use these tools to manage the tournament:</p>
+                <a href="/Admin/Teams" class="btn btn-outline-primary me-2">Manage Teams</a>
+                <a href="/Admin/Results" class="btn btn-outline-success me-2">Enter Results</a>
+                <a href="/Admin/SubmitForOthers" class="btn btn-outline-info">Submit for Others</a>
+            </div>
+        }
+    }
+</div>

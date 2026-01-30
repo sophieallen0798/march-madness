@@ -1,0 +1,102 @@
+@page
+@model MarchMadness.Web.Pages.Admin.ResultsModel
+@{
+    ViewData["Title"] = "Enter Results";
+}
+
+<div class="container mt-4">
+    <h1>Enter Game Results</h1>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="btn-group" role="group">
+                @for (int i = 1; i <= 6; i++)
+                {
+                    var roundName = i switch
+                    {
+                        1 => "Round of 64",
+                        2 => "Round of 32",
+                        3 => "Sweet 16",
+                        4 => "Elite 8",
+                        5 => "Final Four",
+                        6 => "Championship",
+                        _ => $"Round {i}"
+                    };
+                    <a href="?round=@i" class="btn @(Model.SelectedRound == i ? "btn-primary" : "btn-outline-primary")">
+                        @roundName
+                    </a>
+                }
+            </div>
+        </div>
+    </div>
+
+    @if (!Model.Games.Any())
+    {
+        <div class="alert alert-warning">No games found for this round.</div>
+    }
+    else
+    {
+        <div class="row">
+            @foreach (var game in Model.Games)
+            {
+                <div class="col-md-6 mb-4">
+                    <div class="card @(game.WinnerId.HasValue ? "border-success" : "")">
+                        <div class="card-header @(game.WinnerId.HasValue ? "bg-success text-white" : "bg-light")">
+                            <strong>Game @game.GameNumber</strong> - @game.Region
+                            @if (game.WinnerId.HasValue)
+                            {
+                                <span class="badge bg-white text-success float-end">Complete</span>
+                            }
+                        </div>
+                        <div class="card-body">
+                            @if (game.Team1Id.HasValue && game.Team2Id.HasValue)
+                            {
+                                <form method="post" asp-page-handler="SetWinner" asp-route-gameId="@game.Id">
+                                    <div class="d-grid gap-2">
+                                        <button type="submit" name="winnerId" value="@game.Team1Id" 
+                                                class="btn @(game.WinnerId == game.Team1Id ? "btn-success" : "btn-outline-primary") btn-lg text-start">
+                                            @if (game.WinnerId == game.Team1Id)
+                                            {
+                                                <span>✓ </span>
+                                            }
+                                            @game.Team1?.Name
+                                        </button>
+                                        <button type="submit" name="winnerId" value="@game.Team2Id" 
+                                                class="btn @(game.WinnerId == game.Team2Id ? "btn-success" : "btn-outline-primary") btn-lg text-start">
+                                            @if (game.WinnerId == game.Team2Id)
+                                            {
+                                                <span>✓ </span>
+                                            }
+                                            @game.Team2?.Name
+                                        </button>
+                                    </div>
+                                </form>
+                            }
+                            else
+                            {
+                                <p class="text-muted">Waiting for previous round results...</p>
+                                @if (game.Team1Id.HasValue)
+                                {
+                                    <p><strong>Team 1:</strong> @game.Team1?.Name</p>
+                                }
+                                @if (game.Team2Id.HasValue)
+                                {
+                                    <p><strong>Team 2:</strong> @game.Team2?.Name</p>
+                                }
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    <div class="alert alert-info mt-4">
+        <strong>Note:</strong> When you enter a winner, it will automatically:
+        <ul class="mb-0">
+            <li>Advance the winning team to the next round</li>
+            <li>Recalculate all bracket scores</li>
+            <li>Update the standings</li>
+        </ul>
+    </div>
+</div>
