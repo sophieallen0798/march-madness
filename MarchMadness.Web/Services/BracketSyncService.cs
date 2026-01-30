@@ -21,7 +21,7 @@ namespace MarchMadness.Web.Services
             _logger = logger;
         }
 
-        public async Task SyncBracketDataAsync(string sport, int year = 2026)
+        public async Task SyncBracketDataAsync(string sport, int year = 2025)
         {
             _logger.LogInformation("Starting bracket sync for {Sport} {Year}", sport, year);
 
@@ -57,7 +57,9 @@ namespace MarchMadness.Web.Services
             foreach (var apiTeam in allTeamsFromApi)
             {
                 var existingTeam = await _context.Teams
-                    .FirstOrDefaultAsync(t => t.SeoName == apiTeam.SeoName && t.Sport == sport && t.Year == year);
+                    .FirstOrDefaultAsync(t => t.SeoName == apiTeam.SeoName 
+                                              && t.Sport == sport 
+                                              && t.Year == year);
 
                 if (existingTeam == null)
                 {
@@ -99,11 +101,16 @@ namespace MarchMadness.Web.Services
 
                 if (existingGame == null)
                 {
+                    // Parse round number from first digit of bracketId
+                    var roundNumber = apiGame.BracketId / 100;
+                    
                     var game = new Game
                     {
                         ContestId = apiGame.ContestId,
                         BracketPositionId = apiGame.BracketPositionId,
-                        Round = apiGame.SectionId,
+                        BracketId = apiGame.BracketId,
+                        VictorBracketPositionId = apiGame.VictorBracketPositionId,
+                        Round = roundNumber,
                         GameState = apiGame.GameState,
                         CurrentPeriod = apiGame.CurrentPeriod,
                         Title = apiGame.Title,

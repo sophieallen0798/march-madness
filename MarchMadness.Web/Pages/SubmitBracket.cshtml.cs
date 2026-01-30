@@ -47,7 +47,7 @@ namespace MarchMadness.Web.Pages
             }
 
             var expectedGameCount = await _context.Games
-                .Where(g => g.Sport == Sport && g.Year == 2026 && g.Team1Id.HasValue && g.Team2Id.HasValue)
+                .Where(g => g.Sport == Sport && g.Year == 2025 && g.Team1Id.HasValue && g.Team2Id.HasValue)
                 .CountAsync();
 
             if (GamePicks.Count != expectedGameCount)
@@ -72,7 +72,7 @@ namespace MarchMadness.Web.Pages
 
             // Check if user already has a bracket for this sport/year
             var existingBracket = await _context.Brackets
-                .FirstOrDefaultAsync(b => b.UserId == user.Id && b.Sport == Sport && b.Year == 2026);
+                .FirstOrDefaultAsync(b => b.UserId == user.Id && b.Sport == Sport && b.Year == 2025);
 
             if (existingBracket != null)
             {
@@ -94,7 +94,7 @@ namespace MarchMadness.Web.Pages
                 {
                     UserId = user.Id,
                     Sport = Sport,
-                    Year = 2026,
+                    Year = 2025,
                     BracketName = string.IsNullOrWhiteSpace(BracketName) ? $"{UserName}'s {(Sport == "basketball-men" ? "Men's" : "Women's")} Bracket" : BracketName,
                     SubmittedDate = DateTime.Now
                 };
@@ -120,16 +120,23 @@ namespace MarchMadness.Web.Pages
 
         private async Task LoadGamesAsync()
         {
-            AllGames = await _context.Games
-                .Include(g => g.Team1)
-                .Include(g => g.Team2)
-                .Where(g => g.Sport == Sport && g.Year == 2026 && g.Team1Id.HasValue && g.Team2Id.HasValue)
-                .OrderBy(g => g.Round)
-                .ThenBy(g => g.BracketPositionId)
-                .ToListAsync();
+            try
+            {
+                AllGames = await _context.Games
+                    .Include(g => g.Team1)
+                    .Include(g => g.Team2)
+                    .Where(g => g.Sport == Sport && g.Year == 2025 && g.Team1Id.HasValue && g.Team2Id.HasValue)
+                    .OrderBy(g => g.Round)
+                    .ThenBy(g => g.BracketPositionId)
+                    .ToListAsync();
 
-            GamesByRound = AllGames.GroupBy(g => g.Round).ToDictionary(g => g.Key, g => g.ToList());
-            HasGames = AllGames.Any();
+                GamesByRound = AllGames.GroupBy(g => g.Round).ToDictionary(g => g.Key, g => g.ToList());
+                HasGames = AllGames.Any();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("No games found", ex);
+            }
         }
     }
 }

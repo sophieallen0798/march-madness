@@ -17,8 +17,15 @@ namespace MarchMadness.Web.Pages
 
         public async Task OnGetAsync(string sport = "basketball-men")
         {
-            Sport = sport;
-            Standings = await _standingsService.GetStandingsAsync(sport, 2026);
+            try
+            {
+                Sport = sport;
+                Standings = await _standingsService.GetStandingsAsync(sport, 2025);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("An error occured getting standings", ex);
+            }
         }
     }
 }

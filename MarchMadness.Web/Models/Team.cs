@@ -11,6 +11,6 @@ namespace MarchMadness.Web.Models
         public string LogoUrl { get; set; } = string.Empty;
         public string Region { get; set; } = string.Empty;
         public string Sport { get; set; } = string.Empty; // "basketball-men" or "basketball-women"
-        public int Year { get; set; } = 2026;
+        public int Year { get; set; } = 2025;
     }
 }

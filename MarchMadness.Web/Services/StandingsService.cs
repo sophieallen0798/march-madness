@@ -13,7 +13,7 @@ namespace MarchMadness.Web.Services
             _context = context;
         }
 
-        public async Task<List<BracketStanding>> GetStandingsAsync(string sport, int year = 2026)
+        public async Task<List<BracketStanding>> GetStandingsAsync(string sport, int year = 2025)
         {
             var brackets = await _context.Brackets
                 .Include(b => b.User)
@@ -81,7 +81,7 @@ namespace MarchMadness.Web.Services
             }
         }
 
-        public async Task RecalculateBracketsForSportAsync(string sport, int year = 2026)
+        public async Task RecalculateBracketsForSportAsync(string sport, int year = 2025)
         {
             var brackets = await _context.Brackets
                 .Where(b => b.Sport == sport && b.Year == year)

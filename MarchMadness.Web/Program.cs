@@ -53,10 +53,10 @@ using (var scope = app.Services.CreateScope())
         var syncService = scope.ServiceProvider.GetRequiredService<BracketSyncService>();
         
         logger.LogInformation("Syncing Men's Basketball bracket data...");
-        await syncService.SyncBracketDataAsync("basketball-men", 2026);
+        await syncService.SyncBracketDataAsync("basketball-men", 2025);
         
         logger.LogInformation("Syncing Women's Basketball bracket data...");
-        await syncService.SyncBracketDataAsync("basketball-women", 2026);
+        await syncService.SyncBracketDataAsync("basketball-women", 2025);
         
         logger.LogInformation("Bracket data sync completed");
     }

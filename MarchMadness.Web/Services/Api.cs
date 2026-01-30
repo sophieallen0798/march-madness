@@ -15,7 +15,7 @@ namespace MarchMadness.Web.Services
             _logger = logger;
         }
 
-        public async Task<BracketApiResponse?> GetBracketInfoAsync(string sport, int year = 2026)
+        public async Task<BracketApiResponse?> GetBracketInfoAsync(string sport, int year = 2025)
         {
             try
             {

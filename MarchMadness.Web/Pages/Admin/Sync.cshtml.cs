@@ -28,7 +28,7 @@ namespace MarchMadness.Web.Pages.Admin
         {
             try
             {
-                await _syncService.SyncBracketDataAsync(sport, 2026);
+                await _syncService.SyncBracketDataAsync(sport, 2025);
                 Message = $"Successfully synced {sport} bracket data from API";
                 IsError = false;
             }
@@ -46,7 +46,7 @@ namespace MarchMadness.Web.Pages.Admin
             try
             {
                 await _syncService.UpdateScoresAsync(sport);
-                await _standingsService.RecalculateBracketsForSportAsync(sport, 2026);
+                await _standingsService.RecalculateBracketsForSportAsync(sport, 2025);
                 Message = $"Successfully updated scores for {sport}";
                 IsError = false;
             }
