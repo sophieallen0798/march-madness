@@ -13,10 +13,12 @@ namespace MarchMadness.Web.Pages
         }
 
         public List<BracketStanding> Standings { get; set; } = new();
+        public string Sport { get; set; } = "basketball-men";
 
-        public async Task OnGetAsync()
+        public async Task OnGetAsync(string sport = "basketball-men")
         {
-            Standings = await _standingsService.GetStandingsAsync();
+            Sport = sport;
+            Standings = await _standingsService.GetStandingsAsync(sport, 2026);
         }
     }
 }

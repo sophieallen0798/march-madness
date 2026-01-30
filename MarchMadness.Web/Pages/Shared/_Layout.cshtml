@@ -22,26 +22,31 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-page="/Index">Home</a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-page="/SubmitBracket">Submit Bracket</a>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle text-dark" href="#" id="bracketDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                Submit Bracket
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="bracketDropdown">
+                                <li><a class="dropdown-item" asp-area="" asp-page="/SubmitBracket" asp-route-sport="basketball-men">Men's Basketball</a></li>
+                                <li><a class="dropdown-item" asp-area="" asp-page="/SubmitBracket" asp-route-sport="basketball-women">Women's Basketball</a></li>
+                            </ul>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-page="/Standings">Standings</a>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle text-dark" href="#" id="standingsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                Standings
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="standingsDropdown">
+                                <li><a class="dropdown-item" asp-area="" asp-page="/Standings" asp-route-sport="basketball-men">Men's Basketball</a></li>
+                                <li><a class="dropdown-item" asp-area="" asp-page="/Standings" asp-route-sport="basketball-women">Women's Basketball</a></li>
+                            </ul>
                         </li>
                         @if (User.Identity?.IsAuthenticated == true)
                         {
                             var adminUsers = new[] { "EVR\\sallen", "EVR\\sallen-t1" };
                             if (adminUsers.Contains(User.Identity?.Name, StringComparer.OrdinalIgnoreCase))
                             {
-                                <li class="nav-item dropdown">
-                                    <a class="nav-link dropdown-toggle text-dark" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                        Admin
-                                    </a>
-                                    <ul class="dropdown-menu" aria-labelledby="adminDropdown">
-                                        <li><a class="dropdown-item" asp-area="" asp-page="/Admin/Teams">Manage Teams</a></li>
-                                        <li><a class="dropdown-item" asp-area="" asp-page="/Admin/Results">Enter Results</a></li>
-                                        <li><a class="dropdown-item" asp-area="" asp-page="/Admin/SubmitForOthers">Submit for Others</a></li>
-                                    </ul>
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark" asp-area="" asp-page="/Admin/Sync">Admin</a>
                                 </li>
                             }
                         }

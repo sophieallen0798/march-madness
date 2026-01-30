@@ -5,14 +5,20 @@
 }
 
 <div class="container mt-4">
-    <h1>March Madness Standings</h1>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>March Madness Standings</h1>
+        <div class="btn-group">
+            <a href="?sport=basketball-men" class="btn @(Model.Sport == "basketball-men" ? "btn-primary" : "btn-outline-primary")">Men's</a>
+            <a href="?sport=basketball-women" class="btn @(Model.Sport == "basketball-women" ? "btn-info" : "btn-outline-info")">Women's</a>
+        </div>
+    </div>
 
     @if (!Model.Standings.Any())
     {
         <div class="alert alert-info">
-            <strong>No brackets submitted yet.</strong>
+            <strong>No brackets submitted yet for @(Model.Sport == "basketball-men" ? "Men's" : "Women's") Basketball.</strong>
             <p>Be the first to submit your bracket!</p>
-            <a href="/SubmitBracket" class="btn btn-primary">Submit Bracket</a>
+            <a href="/SubmitBracket?sport=@Model.Sport" class="btn @(Model.Sport == "basketball-men" ? "btn-primary" : "btn-info")">Submit Bracket</a>
         </div>
     }
     else
@@ -66,7 +72,7 @@
 
         <div class="mt-3">
             <p class="text-muted">
-                <strong>Scoring:</strong> Round 1 = 1 pt, Round 2 = 2 pts, Round 3 = 4 pts, Round 4 = 8 pts, Round 5 = 16 pts, Championship = 32 pts
+                <strong>Scoring:</strong> Points double each round (1, 2, 4, 8, 16, 32)
             </p>
         </div>
     }

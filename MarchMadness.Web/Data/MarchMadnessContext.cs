@@ -39,9 +39,9 @@ namespace MarchMadness.Web.Data
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Pick>()
-                .HasOne(p => p.User)
+                .HasOne(p => p.Bracket)
                 .WithMany()
-                .HasForeignKey(p => p.UserId);
+                .HasForeignKey(p => p.BracketId);
 
             modelBuilder.Entity<Pick>()
                 .HasOne(p => p.Game)
@@ -57,6 +57,16 @@ namespace MarchMadness.Web.Data
                 .HasOne(b => b.User)
                 .WithMany()
                 .HasForeignKey(b => b.UserId);
+
+            // Indexes for better query performance
+            modelBuilder.Entity<Game>()
+                .HasIndex(g => new { g.Sport, g.Year, g.ContestId });
+
+            modelBuilder.Entity<Team>()
+                .HasIndex(t => new { t.Sport, t.Year, t.SeoName });
+
+            modelBuilder.Entity<Bracket>()
+                .HasIndex(b => new { b.Sport, b.Year, b.UserId });
         }
     }
 }

@@ -1,0 +1,88 @@
+@page
+@model MarchMadness.Web.Pages.Admin.SyncModel
+@{
+    ViewData["Title"] = "Sync Tournament Data";
+}
+
+<div class="container mt-4">
+    <h1>Admin - Sync Tournament Data</h1>
+    <p class="text-muted">Sync bracket data and scores from the NCAA API</p>
+
+    @if (Model.Message != null)
+    {
+        <div class="alert @(Model.IsError ? "alert-danger" : "alert-success")">
+            @Model.Message
+        </div>
+    }
+
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h3>Men's Basketball</h3>
+                </div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="SyncBrackets" asp-route-sport="basketball-men" class="mb-3">
+                        <button type="submit" class="btn btn-primary w-100">
+                            Sync Men's Bracket from API
+                        </button>
+                        <p class="text-muted small mt-2 mb-0">Fetches teams and games from NCAA API</p>
+                    </form>
+
+                    <form method="post" asp-page-handler="UpdateScores" asp-route-sport="basketball-men">
+                        <button type="submit" class="btn btn-success w-100">
+                            Update Men's Scores
+                        </button>
+                        <p class="text-muted small mt-2 mb-0">Updates current game scores and recalculates standings</p>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h3>Women's Basketball</h3>
+                </div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="SyncBrackets" asp-route-sport="basketball-women" class="mb-3">
+                        <button type="submit" class="btn btn-info w-100">
+                            Sync Women's Bracket from API
+                        </button>
+                        <p class="text-muted small mt-2 mb-0">Fetches teams and games from NCAA API</p>
+                    </form>
+
+                    <form method="post" asp-page-handler="UpdateScores" asp-route-sport="basketball-women">
+                        <button type="submit" class="btn btn-success w-100">
+                            Update Women's Scores
+                        </button>
+                        <p class="text-muted small mt-2 mb-0">Updates current game scores and recalculates standings</p>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header bg-secondary text-white">
+            <h3>Recalculate Standings</h3>
+        </div>
+        <div class="card-body">
+            <form method="post" asp-page-handler="RecalculateStandings">
+                <button type="submit" class="btn btn-secondary btn-lg w-100">
+                    Recalculate All Brackets
+                </button>
+                <p class="text-muted small mt-2 mb-0">Recalculates points for all user brackets based on current game results</p>
+            </form>
+        </div>
+    </div>
+
+    <div class="alert alert-info mt-4">
+        <h5>Usage Notes:</h5>
+        <ul>
+            <li><strong>Sync Bracket:</strong> Run this once at the start of the tournament to load all teams and games</li>
+            <li><strong>Update Scores:</strong> Run periodically during the tournament to update game results</li>
+            <li><strong>Recalculate Standings:</strong> Automatically happens when you update scores, but can be manually triggered</li>
+        </ul>
+    </div>
+</div>

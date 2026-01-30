@@ -13,31 +13,33 @@ namespace MarchMadness.Web.Services
             _context = context;
         }
 
-        public async Task<List<BracketStanding>> GetStandingsAsync()
+        public async Task<List<BracketStanding>> GetStandingsAsync(string sport, int year = 2026)
         {
             var brackets = await _context.Brackets
                 .Include(b => b.User)
-                .OrderByDescending(b => b.TotalPoints)
-                .ThenBy(b => b.SubmittedDate)
+                .Where(b => b.Sport == sport && b.Year == year)
                 .ToListAsync();
 
             var standings = new List<BracketStanding>();
-            int rank = 1;
 
             foreach (var bracket in brackets)
             {
                 var points = await CalculateBracketPointsAsync(bracket.Id);
                 standings.Add(new BracketStanding
                 {
-                    Rank = rank++,
+                    BracketId = bracket.Id,
                     BracketName = bracket.BracketName,
                     UserName = bracket.User.Name,
                     TotalPoints = points,
-                    SubmittedDate = bracket.SubmittedDate
+                    SubmittedDate = bracket.SubmittedDate,
+                    Sport = sport
                 });
             }
 
-            return standings;
+            return standings.OrderByDescending(s => s.TotalPoints)
+                           .ThenBy(s => s.SubmittedDate)
+                           .Select((s, index) => { s.Rank = index + 1; return s; })
+                           .ToList();
         }
 
         public async Task<int> CalculateBracketPointsAsync(int bracketId)
@@ -47,16 +49,17 @@ namespace MarchMadness.Web.Services
 
             var picks = await _context.Picks
                 .Include(p => p.Game)
-                .Where(p => p.UserId == bracket.UserId)
+                .Where(p => p.BracketId == bracketId)
                 .ToListAsync();
 
             int totalPoints = 0;
 
             foreach (var pick in picks)
             {
+                // Only count if game has a winner
                 if (pick.Game.WinnerId.HasValue && pick.PickedTeamId == pick.Game.WinnerId)
                 {
-                    // Points based on round: 1, 2, 4, 8, 16, 32
+                    // Points based on round: Round 1=1, Round 2=2, Round 3=4, Round 4=8, Round 5=16, Round 6=32
                     int roundPoints = (int)Math.Pow(2, pick.Game.Round - 1);
                     totalPoints += roundPoints;
                 }
@@ -77,14 +80,28 @@ namespace MarchMadness.Web.Services
                 await CalculateBracketPointsAsync(bracket.Id);
             }
         }
+
+        public async Task RecalculateBracketsForSportAsync(string sport, int year = 2026)
+        {
+            var brackets = await _context.Brackets
+                .Where(b => b.Sport == sport && b.Year == year)
+                .ToListAsync();
+
+            foreach (var bracket in brackets)
+            {
+                await CalculateBracketPointsAsync(bracket.Id);
+            }
+        }
     }
 
     public class BracketStanding
     {
         public int Rank { get; set; }
+        public int BracketId { get; set; }
         public string BracketName { get; set; } = string.Empty;
         public string UserName { get; set; } = string.Empty;
         public int TotalPoints { get; set; }
         public DateTime SubmittedDate { get; set; }
+        public string Sport { get; set; } = string.Empty;
     }
 }

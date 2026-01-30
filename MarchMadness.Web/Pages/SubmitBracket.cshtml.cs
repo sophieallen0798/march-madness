@@ -22,17 +22,18 @@ namespace MarchMadness.Web.Pages
         public string BracketName { get; set; } = string.Empty;
 
         [BindProperty]
+        public string Sport { get; set; } = "basketball-men";
+
+        [BindProperty]
         public Dictionary<int, int> GamePicks { get; set; } = new();
 
-        public List<Game> Round1Games { get; set; } = new();
-        public List<Game> Round2Games { get; set; } = new();
-        public List<Game> Round3Games { get; set; } = new();
-        public List<Game> Round4Games { get; set; } = new();
-        public List<Game> Round5Games { get; set; } = new();
-        public List<Game> Round6Games { get; set; } = new();
+        public List<Game> AllGames { get; set; } = new();
+        public Dictionary<int, List<Game>> GamesByRound { get; set; } = new();
+        public bool HasGames { get; set; }
 
-        public async Task OnGetAsync()
+        public async Task OnGetAsync(string sport = "basketball-men")
         {
+            Sport = sport;
             await LoadGamesAsync();
         }
 
@@ -45,11 +46,13 @@ namespace MarchMadness.Web.Pages
                 return Page();
             }
 
-            // Check if all games have picks
-            var allGames = await _context.Games.CountAsync();
-            if (GamePicks.Count != allGames)
+            var expectedGameCount = await _context.Games
+                .Where(g => g.Sport == Sport && g.Year == 2026 && g.Team1Id.HasValue && g.Team2Id.HasValue)
+                .CountAsync();
+
+            if (GamePicks.Count != expectedGameCount)
             {
-                ModelState.AddModelError("", "Please make a pick for every game");
+                ModelState.AddModelError("", $"Please make a pick for all {expectedGameCount} games");
                 await LoadGamesAsync();
                 return Page();
             }
@@ -67,26 +70,44 @@ namespace MarchMadness.Web.Pages
                 await _context.SaveChangesAsync();
             }
 
-            // Create bracket
-            var bracket = new Bracket
-            {
-                UserId = user.Id,
-                BracketName = string.IsNullOrWhiteSpace(BracketName) ? $"{UserName}'s Bracket" : BracketName,
-                SubmittedDate = DateTime.Now
-            };
-            _context.Brackets.Add(bracket);
-            await _context.SaveChangesAsync();
+            // Check if user already has a bracket for this sport/year
+            var existingBracket = await _context.Brackets
+                .FirstOrDefaultAsync(b => b.UserId == user.Id && b.Sport == Sport && b.Year == 2026);
 
-            // Delete existing picks for this user (if resubmitting)
-            var existingPicks = await _context.Picks.Where(p => p.UserId == user.Id).ToListAsync();
-            _context.Picks.RemoveRange(existingPicks);
+            if (existingBracket != null)
+            {
+                // Delete existing picks
+                var existingPicks = await _context.Picks.Where(p => p.BracketId == existingBracket.Id).ToListAsync();
+                _context.Picks.RemoveRange(existingPicks);
+
+                // Update bracket name if provided
+                if (!string.IsNullOrWhiteSpace(BracketName))
+                {
+                    existingBracket.BracketName = BracketName;
+                }
+                existingBracket.SubmittedDate = DateTime.Now;
+            }
+            else
+            {
+                // Create new bracket
+                existingBracket = new Bracket
+                {
+                    UserId = user.Id,
+                    Sport = Sport,
+                    Year = 2026,
+                    BracketName = string.IsNullOrWhiteSpace(BracketName) ? $"{UserName}'s {(Sport == "basketball-men" ? "Men's" : "Women's")} Bracket" : BracketName,
+                    SubmittedDate = DateTime.Now
+                };
+                _context.Brackets.Add(existingBracket);
+                await _context.SaveChangesAsync();
+            }
 
             // Save picks
             foreach (var gamePick in GamePicks)
             {
                 _context.Picks.Add(new Pick
                 {
-                    UserId = user.Id,
+                    BracketId = existingBracket.Id,
                     GameId = gamePick.Key,
                     PickedTeamId = gamePick.Value
                 });
@@ -94,24 +115,21 @@ namespace MarchMadness.Web.Pages
 
             await _context.SaveChangesAsync();
 
-            return RedirectToPage("/Standings");
+            return RedirectToPage("/Standings", new { sport = Sport });
         }
 
         private async Task LoadGamesAsync()
         {
-            var allGames = await _context.Games
+            AllGames = await _context.Games
                 .Include(g => g.Team1)
                 .Include(g => g.Team2)
+                .Where(g => g.Sport == Sport && g.Year == 2026 && g.Team1Id.HasValue && g.Team2Id.HasValue)
                 .OrderBy(g => g.Round)
-                .ThenBy(g => g.GameNumber)
+                .ThenBy(g => g.BracketPositionId)
                 .ToListAsync();
 
-            Round1Games = allGames.Where(g => g.Round == 1).ToList();
-            Round2Games = allGames.Where(g => g.Round == 2).ToList();
-            Round3Games = allGames.Where(g => g.Round == 3).ToList();
-            Round4Games = allGames.Where(g => g.Round == 4).ToList();
-            Round5Games = allGames.Where(g => g.Round == 5).ToList();
-            Round6Games = allGames.Where(g => g.Round == 6).ToList();
+            GamesByRound = AllGames.GroupBy(g => g.Round).ToDictionary(g => g.Key, g => g.ToList());
+            HasGames = AllGames.Any();
         }
     }
 }
