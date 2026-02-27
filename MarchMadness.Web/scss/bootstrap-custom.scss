@@ -1,0 +1,88 @@
+﻿// =============================================
+// Bootstrap Variable Overrides
+// Set these BEFORE importing Bootstrap so they
+// compile into the generated CSS correctly.
+// Full variable list: node_modules/bootstrap/scss/_variables.scss
+// =============================================
+
+// Brand colors
+$primary:   #1b6ec2;
+$secondary: #77B4D0;
+$success:   #28a745;
+$accent:    #E59153; // custom variable (not a Bootstrap var)
+
+// =============================================
+// Import Bootstrap (uses the variables above)
+// =============================================
+@import "../../node_modules/bootstrap/scss/bootstrap";
+
+// =============================================
+// Custom / Layout Styles
+// Add your own classes and overrides AFTER the
+// Bootstrap import so they take precedence.
+// =============================================
+
+// Base typography
+html {
+    font-size: 14px;
+}
+
+@media (min-width: 768px) {
+    html {
+        font-size: 16px;
+    }
+}
+
+html {
+    position: relative;
+    min-height: 100%;
+}
+
+body {
+    margin-bottom: 60px;
+}
+
+// Links
+a {
+    color: #0077cc;
+}
+
+// Focus rings
+.btn:focus,
+.btn:active:focus,
+.btn-link.nav-link:focus,
+.form-control:focus,
+.form-check-input:focus {
+    box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+}
+
+// Navbar brand
+a.navbar-brand {
+    white-space: normal;
+    text-align: center;
+    word-break: break-all;
+}
+
+// Borders / utilities
+.border-top    { border-top: 1px solid #e5e5e5; }
+.border-bottom { border-bottom: 1px solid #e5e5e5; }
+.box-shadow    { box-shadow: 0 .25rem .75rem rgba(0, 0, 0, .05); }
+
+// Cookie policy button
+button.accept-policy {
+    font-size: 1rem;
+    line-height: inherit;
+}
+
+// Footer
+.footer {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    white-space: nowrap;
+    line-height: 60px;
+}
+
+// =============================================
+// Add your own custom component styles below
+// =============================================

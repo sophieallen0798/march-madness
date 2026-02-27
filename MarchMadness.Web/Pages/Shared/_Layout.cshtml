@@ -1,20 +1,24 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - MarchMadness.Web</title>
-    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/MarchMadness.Web.styles.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/bootstrap-custom.css" asp-append-version="true" />
 </head>
+
 <body>
     <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
+        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom">
             <div class="container">
-                <a class="navbar-brand" asp-area="" asp-page="/Index">🏀 March Madness</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
+                <img src="/images/Haul Truck.png" alt="" width="30" height="30" class="d-inline-block align-text-top"
+                    style="margin-right:10px">
+                <img src="/images/EVR_TaglineLogo_RGB_Blue.png" alt="" height="20" class="d-inline-block align-text-top"
+                    style="margin-right:10px">
+                <a class="navbar-brand" asp-area="" asp-page="/Index">March Madness</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse"
+                    aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
@@ -23,32 +27,38 @@
                             <a class="nav-link text-dark" asp-area="" asp-page="/Index">Home</a>
                         </li>
                         <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle text-dark" href="#" id="bracketDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <a class="nav-link dropdown-toggle text-dark" href="#" id="bracketDropdown" role="button"
+                                data-bs-toggle="dropdown" aria-expanded="false">
                                 Submit Bracket
                             </a>
                             <ul class="dropdown-menu" aria-labelledby="bracketDropdown">
-                                <li><a class="dropdown-item" asp-area="" asp-page="/SubmitBracket" asp-route-sport="basketball-men">Men's Basketball</a></li>
-                                <li><a class="dropdown-item" asp-area="" asp-page="/SubmitBracket" asp-route-sport="basketball-women">Women's Basketball</a></li>
+                                <li><a class="dropdown-item" asp-area="" asp-page="/SubmitBracket"
+                                        asp-route-sport="basketball-men">Men's Basketball</a></li>
+                                <li><a class="dropdown-item" asp-area="" asp-page="/SubmitBracket"
+                                        asp-route-sport="basketball-women">Women's Basketball</a></li>
                             </ul>
                         </li>
                         <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle text-dark" href="#" id="standingsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <a class="nav-link dropdown-toggle text-dark" href="#" id="standingsDropdown" role="button"
+                                data-bs-toggle="dropdown" aria-expanded="false">
                                 Standings
                             </a>
                             <ul class="dropdown-menu" aria-labelledby="standingsDropdown">
-                                <li><a class="dropdown-item" asp-area="" asp-page="/Standings" asp-route-sport="basketball-men">Men's Basketball</a></li>
-                                <li><a class="dropdown-item" asp-area="" asp-page="/Standings" asp-route-sport="basketball-women">Women's Basketball</a></li>
+                                <li><a class="dropdown-item" asp-area="" asp-page="/Standings"
+                                        asp-route-sport="basketball-men">Men's Basketball</a></li>
+                                <li><a class="dropdown-item" asp-area="" asp-page="/Standings"
+                                        asp-route-sport="basketball-women">Women's Basketball</a></li>
                             </ul>
                         </li>
                         @if (User.Identity?.IsAuthenticated == true)
                         {
-                            var adminUsers = new[] { "EVR\\sallen", "EVR\\sallen-t1" };
-                            if (adminUsers.Contains(User.Identity?.Name, StringComparer.OrdinalIgnoreCase))
-                            {
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-area="" asp-page="/Admin/Sync">Admin</a>
-                                </li>
-                            }
+                        var adminUsers = new[] { "EVR\\sallen", "EVR\\sallen-t1" };
+                        if (adminUsers.Contains(User.Identity?.Name, StringComparer.OrdinalIgnoreCase))
+                        {
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-page="/Admin/Sync">Admin</a>
+                        </li>
+                        }
                         }
                     </ul>
                     <p class="nav navbar-text mb-0">Hello, @User.Identity?.Name!</p>
@@ -74,4 +84,5 @@
 
     @await RenderSectionAsync("Scripts", required: false)
 </body>
+
 </html>

@@ -109,10 +109,23 @@ namespace MarchMadness.Web.Models.Api
 
     public class Region
     {
+        //"id": "3720",
+        //"abbreviation": "MW ",
+        //"title": "Midwest",
+        //"subtitle": "",
+        //"sectionId": 5,
+        //"regionCode": "BR"
+        [JsonPropertyName("sectionId")]
+        public int SectionId { get; set; }
+
+        [JsonPropertyName("abbreviation")]
+        public string Abbreviation { get; set; } = string.Empty;
+
+        [JsonPropertyName("title")]
+        public string Title { get; set; }
+
         [JsonPropertyName("regionCode")]
         public string RegionCode { get; set; } = string.Empty;
 
-        [JsonPropertyName("name")]
-        public string Name { get; set; } = string.Empty;
     }
 }

@@ -104,6 +104,9 @@ namespace MarchMadness.Web.Services
                     // Parse round number from first digit of bracketId
                     var roundNumber = apiGame.BracketId / 100;
                     
+                    // Map sectionId to region name
+                    var regionName = MapSectionIdToRegion(apiGame.SectionId, championship);
+                    
                     var game = new Game
                     {
                         ContestId = apiGame.ContestId,
@@ -111,6 +114,7 @@ namespace MarchMadness.Web.Services
                         BracketId = apiGame.BracketId,
                         VictorBracketPositionId = apiGame.VictorBracketPositionId,
                         Round = roundNumber,
+                        Region = regionName,
                         GameState = apiGame.GameState,
                         CurrentPeriod = apiGame.CurrentPeriod,
                         Title = apiGame.Title,
@@ -223,6 +227,33 @@ namespace MarchMadness.Web.Services
 
             await _context.SaveChangesAsync();
             _logger.LogInformation("Scores updated for {Sport}", sport);
+        }
+
+        private string MapSectionIdToRegion(int sectionId, Championship championship)
+        {
+            // Try to find the region name from championship regions data
+            if (championship.Regions != null && championship.Regions.Any())
+            {
+                // In NCAA brackets, region mapping varies but generally:
+                // The bracket has 4 main regions that typically appear in section IDs
+                // Return a consistent name based on sectionId
+                return sectionId switch
+                {
+                    1 => "Play-In", // First Four play-in games
+                    2 => "East",
+                    3 => "West",
+                    4 => "South",
+                    5 => "Midwest",
+                    6 => "Final Four",
+                    7 => "Championship",
+                    _ => $"Region{sectionId}"
+                };
+            }
+            
+            // Fallback if no regions data
+            return sectionId <= 1 ? "Play-In" : 
+                   sectionId >= 6 ? "Finals" : 
+                   $"Region{sectionId}";
         }
     }
 }

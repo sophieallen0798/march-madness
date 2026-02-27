@@ -1,0 +1,17 @@
+﻿# Build output
+[Dd]ebug/
+[Rr]elease/
+[Bb]in/
+[Oo]bj/
+
+# Node / npm
+node_modules/
+package-lock.json
+
+# SCSS compiled output
+**/wwwroot/css/bootstrap-custom.css
+**/wwwroot/css/bootstrap-custom.css.map
+
+# Local notes
+NAME_VERIFICATION_FEATURE.md
+PROJECT_COMPLETE.md

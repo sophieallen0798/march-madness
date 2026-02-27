@@ -1,0 +1,1364 @@
+{
+  "inputMD5Sum": "59bf3ae02f0338572713c571f6cbb697",
+  "instanceId": "d41d8cd98f00b204e9800998ecf8427e",
+  "updated_at": "2026-01-30 18:23:21",
+  "games": [
+    {
+      "game": {
+        "gameID": "6504208",
+        "away": {
+          "score": "",
+          "names": {
+            "char6": "GA SOU",
+            "short": "Ga. Southern",
+            "seo": "ga-southern",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "sun-belt"
+            }
+          ]
+        },
+        "finalMessage": "",
+        "bracketRound": "",
+        "title": "Ga. Southern ULM",
+        "contestName": "",
+        "url": "/game/6504208",
+        "network": "",
+        "home": {
+          "score": "",
+          "names": {
+            "char6": "LA MON",
+            "short": "ULM",
+            "seo": "la-monroe",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "sun-belt"
+            }
+          ]
+        },
+        "liveVideoEnabled": false,
+        "startTime": "3:00 PM ET",
+        "startTimeEpoch": "1769803200",
+        "bracketId": "",
+        "gameState": "pre",
+        "startDate": "01/30/2026",
+        "currentPeriod": "",
+        "videoState": "",
+        "bracketRegion": "",
+        "contestClock": "0:00"
+      }
+    },
+    {
+      "game": {
+        "gameID": "6502386",
+        "away": {
+          "score": "",
+          "names": {
+            "char6": "PRINCE",
+            "short": "Princeton",
+            "seo": "princeton",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "ivy-league"
+            }
+          ]
+        },
+        "finalMessage": "",
+        "bracketRound": "",
+        "title": "Princeton Cornell",
+        "contestName": "",
+        "url": "/game/6502386",
+        "network": "",
+        "home": {
+          "score": "",
+          "names": {
+            "char6": "CORN",
+            "short": "Cornell",
+            "seo": "cornell",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "ivy-league"
+            }
+          ]
+        },
+        "liveVideoEnabled": false,
+        "startTime": "6:00 PM ET",
+        "startTimeEpoch": "1769814000",
+        "bracketId": "",
+        "gameState": "pre",
+        "startDate": "01/30/2026",
+        "currentPeriod": "",
+        "videoState": "",
+        "bracketRegion": "",
+        "contestClock": "0:00"
+      }
+    },
+    {
+      "game": {
+        "gameID": "6504777",
+        "away": {
+          "score": "",
+          "names": {
+            "char6": "KENT",
+            "short": "Kent St.",
+            "seo": "kent-st",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "mac"
+            }
+          ]
+        },
+        "finalMessage": "",
+        "bracketRound": "",
+        "title": "Kent St. Akron",
+        "contestName": "",
+        "url": "/game/6504777",
+        "network": "",
+        "home": {
+          "score": "",
+          "names": {
+            "char6": "AKRON",
+            "short": "Akron",
+            "seo": "akron",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "mac"
+            }
+          ]
+        },
+        "liveVideoEnabled": false,
+        "startTime": "6:00 PM ET",
+        "startTimeEpoch": "1769814000",
+        "bracketId": "",
+        "gameState": "pre",
+        "startDate": "01/30/2026",
+        "currentPeriod": "",
+        "videoState": "",
+        "bracketRegion": "",
+        "contestClock": "0:00"
+      }
+    },
+    {
+      "game": {
+        "gameID": "6501795",
+        "away": {
+          "score": "",
+          "names": {
+            "char6": "IUINDY",
+            "short": "IU Indy",
+            "seo": "iu-indy",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "horizon"
+            }
+          ]
+        },
+        "finalMessage": "",
+        "bracketRound": "",
+        "title": "IU Indy Youngstown St.",
+        "contestName": "",
+        "url": "/game/6501795",
+        "network": "",
+        "home": {
+          "score": "",
+          "names": {
+            "char6": "YSU",
+            "short": "Youngstown St.",
+            "seo": "youngstown-st",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "horizon"
+            }
+          ]
+        },
+        "liveVideoEnabled": false,
+        "startTime": "6:30 PM ET",
+        "startTimeEpoch": "1769815800",
+        "bracketId": "",
+        "gameState": "pre",
+        "startDate": "01/30/2026",
+        "currentPeriod": "",
+        "videoState": "",
+        "bracketRegion": "",
+        "contestClock": "0:00"
+      }
+    },
+    {
+      "game": {
+        "gameID": "6502987",
+        "away": {
+          "score": "",
+          "names": {
+            "char6": "SIENA",
+            "short": "Siena",
+            "seo": "siena",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "maac"
+            }
+          ]
+        },
+        "finalMessage": "",
+        "bracketRound": "",
+        "title": "Siena Niagara",
+        "contestName": "",
+        "url": "/game/6502987",
+        "network": "",
+        "home": {
+          "score": "",
+          "names": {
+            "char6": "NIAGRA",
+            "short": "Niagara",
+            "seo": "niagara",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "maac"
+            }
+          ]
+        },
+        "liveVideoEnabled": false,
+        "startTime": "6:30 PM ET",
+        "startTimeEpoch": "1769815800",
+        "bracketId": "",
+        "gameState": "pre",
+        "startDate": "01/30/2026",
+        "currentPeriod": "",
+        "videoState": "",
+        "bracketRegion": "",
+        "contestClock": "0:00"
+      }
+    },
+    {
+      "game": {
+        "gameID": "6501166",
+        "away": {
+          "score": "",
+          "names": {
+            "char6": "HARV",
+            "short": "Harvard",
+            "seo": "harvard",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "ivy-league"
+            }
+          ]
+        },
+        "finalMessage": "",
+        "bracketRound": "",
+        "title": "Harvard Brown",
+        "contestName": "",
+        "url": "/game/6501166",
+        "network": "",
+        "home": {
+          "score": "",
+          "names": {
+            "char6": "BROWN",
+            "short": "Brown",
+            "seo": "brown",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "ivy-league"
+            }
+          ]
+        },
+        "liveVideoEnabled": false,
+        "startTime": "7:00 PM ET",
+        "startTimeEpoch": "1769817600",
+        "bracketId": "",
+        "gameState": "pre",
+        "startDate": "01/30/2026",
+        "currentPeriod": "",
+        "videoState": "",
+        "bracketRegion": "",
+        "contestClock": "0:00"
+      }
+    },
+    {
+      "game": {
+        "gameID": "6501726",
+        "away": {
+          "score": "",
+          "names": {
+            "char6": "DART",
+            "short": "Dartmouth",
+            "seo": "dartmouth",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "ivy-league"
+            }
+          ]
+        },
+        "finalMessage": "",
+        "bracketRound": "",
+        "title": "Dartmouth Yale",
+        "contestName": "",
+        "url": "/game/6501726",
+        "network": "",
+        "home": {
+          "score": "",
+          "names": {
+            "char6": "YALE",
+            "short": "Yale",
+            "seo": "yale",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "ivy-league"
+            }
+          ]
+        },
+        "liveVideoEnabled": false,
+        "startTime": "7:00 PM ET",
+        "startTimeEpoch": "1769817600",
+        "bracketId": "",
+        "gameState": "pre",
+        "startDate": "01/30/2026",
+        "currentPeriod": "",
+        "videoState": "",
+        "bracketRegion": "",
+        "contestClock": "0:00"
+      }
+    },
+    {
+      "game": {
+        "gameID": "6501768",
+        "away": {
+          "score": "",
+          "names": {
+            "char6": "PENN",
+            "short": "Penn",
+            "seo": "penn",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "ivy-league"
+            }
+          ]
+        },
+        "finalMessage": "",
+        "bracketRound": "",
+        "title": "Penn Columbia",
+        "contestName": "",
+        "url": "/game/6501768",
+        "network": "",
+        "home": {
+          "score": "",
+          "names": {
+            "char6": "COLUMB",
+            "short": "Columbia",
+            "seo": "columbia",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "ivy-league"
+            }
+          ]
+        },
+        "liveVideoEnabled": false,
+        "startTime": "7:00 PM ET",
+        "startTimeEpoch": "1769817600",
+        "bracketId": "",
+        "gameState": "pre",
+        "startDate": "01/30/2026",
+        "currentPeriod": "",
+        "videoState": "",
+        "bracketRegion": "",
+        "contestClock": "0:00"
+      }
+    },
+    {
+      "game": {
+        "gameID": "6501812",
+        "away": {
+          "score": "",
+          "names": {
+            "char6": "MARIST",
+            "short": "Marist",
+            "seo": "marist",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "maac"
+            }
+          ]
+        },
+        "finalMessage": "",
+        "bracketRound": "",
+        "title": "Marist Canisius",
+        "contestName": "",
+        "url": "/game/6501812",
+        "network": "",
+        "home": {
+          "score": "",
+          "names": {
+            "char6": "CANISI",
+            "short": "Canisius",
+            "seo": "canisius",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "maac"
+            }
+          ]
+        },
+        "liveVideoEnabled": false,
+        "startTime": "7:00 PM ET",
+        "startTimeEpoch": "1769817600",
+        "bracketId": "",
+        "gameState": "pre",
+        "startDate": "01/30/2026",
+        "currentPeriod": "",
+        "videoState": "",
+        "bracketRegion": "",
+        "contestClock": "0:00"
+      }
+    },
+    {
+      "game": {
+        "gameID": "6501995",
+        "away": {
+          "score": "",
+          "names": {
+            "char6": "FAIR",
+            "short": "Fairfield",
+            "seo": "fairfield",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "maac"
+            }
+          ]
+        },
+        "finalMessage": "",
+        "bracketRound": "",
+        "title": "Fairfield Iona",
+        "contestName": "",
+        "url": "/game/6501995",
+        "network": "",
+        "home": {
+          "score": "",
+          "names": {
+            "char6": "IONA",
+            "short": "Iona",
+            "seo": "iona",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "maac"
+            }
+          ]
+        },
+        "liveVideoEnabled": false,
+        "startTime": "7:00 PM ET",
+        "startTimeEpoch": "1769817600",
+        "bracketId": "",
+        "gameState": "pre",
+        "startDate": "01/30/2026",
+        "currentPeriod": "",
+        "videoState": "",
+        "bracketRegion": "",
+        "contestClock": "0:00"
+      }
+    },
+    {
+      "game": {
+        "gameID": "6502644",
+        "away": {
+          "score": "",
+          "names": {
+            "char6": "CLE ST",
+            "short": "Cleveland St.",
+            "seo": "cleveland-st",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "horizon"
+            }
+          ]
+        },
+        "finalMessage": "",
+        "bracketRound": "",
+        "title": "Cleveland St. Green Bay",
+        "contestName": "",
+        "url": "/game/6502644",
+        "network": "",
+        "home": {
+          "score": "",
+          "names": {
+            "char6": "GRNBAY",
+            "short": "Green Bay",
+            "seo": "green-bay",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "horizon"
+            }
+          ]
+        },
+        "liveVideoEnabled": false,
+        "startTime": "7:00 PM ET",
+        "startTimeEpoch": "1769817600",
+        "bracketId": "",
+        "gameState": "pre",
+        "startDate": "01/30/2026",
+        "currentPeriod": "",
+        "videoState": "",
+        "bracketRegion": "",
+        "contestClock": "0:00"
+      }
+    },
+    {
+      "game": {
+        "gameID": "6505435",
+        "away": {
+          "score": "",
+          "names": {
+            "char6": "RICE",
+            "short": "Rice",
+            "seo": "rice",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "american"
+            }
+          ]
+        },
+        "finalMessage": "",
+        "bracketRound": "",
+        "title": "Rice Charlotte",
+        "contestName": "",
+        "url": "/game/6505435",
+        "network": "",
+        "home": {
+          "score": "",
+          "names": {
+            "char6": "CHAR",
+            "short": "Charlotte",
+            "seo": "charlotte",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "american"
+            }
+          ]
+        },
+        "liveVideoEnabled": false,
+        "startTime": "7:00 PM ET",
+        "startTimeEpoch": "1769817600",
+        "bracketId": "",
+        "gameState": "pre",
+        "startDate": "01/30/2026",
+        "currentPeriod": "",
+        "videoState": "",
+        "bracketRegion": "",
+        "contestClock": "0:00"
+      }
+    },
+    {
+      "game": {
+        "gameID": "6505628",
+        "away": {
+          "score": "",
+          "names": {
+            "char6": "N KY",
+            "short": "Northern Ky.",
+            "seo": "northern-ky",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "horizon"
+            }
+          ]
+        },
+        "finalMessage": "",
+        "bracketRound": "",
+        "title": "Northern Ky. Detroit Mercy",
+        "contestName": "",
+        "url": "/game/6505628",
+        "network": "",
+        "home": {
+          "score": "",
+          "names": {
+            "char6": "DET",
+            "short": "Detroit Mercy",
+            "seo": "detroit",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "horizon"
+            }
+          ]
+        },
+        "liveVideoEnabled": false,
+        "startTime": "7:00 PM ET",
+        "startTimeEpoch": "1769817600",
+        "bracketId": "",
+        "gameState": "pre",
+        "startDate": "01/30/2026",
+        "currentPeriod": "",
+        "videoState": "",
+        "bracketRegion": "",
+        "contestClock": "0:00"
+      }
+    },
+    {
+      "game": {
+        "gameID": "6505815",
+        "away": {
+          "score": "",
+          "names": {
+            "char6": "RIDER",
+            "short": "Rider",
+            "seo": "rider",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "maac"
+            }
+          ]
+        },
+        "finalMessage": "",
+        "bracketRound": "",
+        "title": "Rider Manhattan",
+        "contestName": "",
+        "url": "/game/6505815",
+        "network": "",
+        "home": {
+          "score": "",
+          "names": {
+            "char6": "MANHAT",
+            "short": "Manhattan",
+            "seo": "manhattan",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "maac"
+            }
+          ]
+        },
+        "liveVideoEnabled": false,
+        "startTime": "7:00 PM ET",
+        "startTimeEpoch": "1769817600",
+        "bracketId": "",
+        "gameState": "pre",
+        "startDate": "01/30/2026",
+        "currentPeriod": "",
+        "videoState": "",
+        "bracketRegion": "",
+        "contestClock": "0:00"
+      }
+    },
+    {
+      "game": {
+        "gameID": "6530765",
+        "away": {
+          "score": "",
+          "names": {
+            "char6": "SACHRT",
+            "short": "Sacred Heart",
+            "seo": "sacred-heart",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "maac"
+            }
+          ]
+        },
+        "finalMessage": "",
+        "bracketRound": "",
+        "title": "Sacred Heart Quinnipiac",
+        "contestName": "",
+        "url": "/game/6530765",
+        "network": "",
+        "home": {
+          "score": "",
+          "names": {
+            "char6": "QUINN",
+            "short": "Quinnipiac",
+            "seo": "quinnipiac",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "maac"
+            }
+          ]
+        },
+        "liveVideoEnabled": false,
+        "startTime": "7:00 PM ET",
+        "startTimeEpoch": "1769817600",
+        "bracketId": "",
+        "gameState": "pre",
+        "startDate": "01/30/2026",
+        "currentPeriod": "",
+        "videoState": "",
+        "bracketRegion": "",
+        "contestClock": "0:00"
+      }
+    },
+    {
+      "game": {
+        "gameID": "6503113",
+        "away": {
+          "score": "",
+          "names": {
+            "char6": "PROV",
+            "short": "Providence",
+            "seo": "providence",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "big-east"
+            }
+          ]
+        },
+        "finalMessage": "",
+        "bracketRound": "",
+        "title": "Providence Villanova",
+        "contestName": "",
+        "url": "/game/6503113",
+        "network": "",
+        "home": {
+          "score": "",
+          "names": {
+            "char6": "NOVA",
+            "short": "Villanova",
+            "seo": "villanova",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "big-east"
+            }
+          ]
+        },
+        "liveVideoEnabled": false,
+        "startTime": "7:30 PM ET",
+        "startTimeEpoch": "1769819400",
+        "bracketId": "",
+        "gameState": "pre",
+        "startDate": "01/30/2026",
+        "currentPeriod": "",
+        "videoState": "",
+        "bracketRegion": "",
+        "contestClock": "0:00"
+      }
+    },
+    {
+      "game": {
+        "gameID": "6502058",
+        "away": {
+          "score": "",
+          "names": {
+            "char6": "MTSTMY",
+            "short": "Mount St. Mary's",
+            "seo": "mt-st-marys",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "maac"
+            }
+          ]
+        },
+        "finalMessage": "",
+        "bracketRound": "",
+        "title": "Mount St. Mary's Saint Peter's",
+        "contestName": "",
+        "url": "/game/6502058",
+        "network": "",
+        "home": {
+          "score": "",
+          "names": {
+            "char6": "ST PTR",
+            "short": "Saint Peter's",
+            "seo": "st-peters",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "maac"
+            }
+          ]
+        },
+        "liveVideoEnabled": false,
+        "startTime": "8:00 PM ET",
+        "startTimeEpoch": "1769821200",
+        "bracketId": "",
+        "gameState": "pre",
+        "startDate": "01/30/2026",
+        "currentPeriod": "",
+        "videoState": "",
+        "bracketRegion": "",
+        "contestClock": "0:00"
+      }
+    },
+    {
+      "game": {
+        "gameID": "6503500",
+        "away": {
+          "score": "",
+          "names": {
+            "char6": "MICH",
+            "short": "Michigan",
+            "seo": "michigan",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "3",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "big-ten"
+            }
+          ]
+        },
+        "finalMessage": "",
+        "bracketRound": "",
+        "title": "Michigan Michigan St.",
+        "contestName": "",
+        "url": "/game/6503500",
+        "network": "",
+        "home": {
+          "score": "",
+          "names": {
+            "char6": "MICHST",
+            "short": "Michigan St.",
+            "seo": "michigan-st",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "7",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "big-ten"
+            }
+          ]
+        },
+        "liveVideoEnabled": false,
+        "startTime": "8:00 PM ET",
+        "startTimeEpoch": "1769821200",
+        "bracketId": "",
+        "gameState": "pre",
+        "startDate": "01/30/2026",
+        "currentPeriod": "",
+        "videoState": "",
+        "bracketRegion": "",
+        "contestClock": "0:00"
+      }
+    },
+    {
+      "game": {
+        "gameID": "6504173",
+        "away": {
+          "score": "",
+          "names": {
+            "char6": "WRIGHT",
+            "short": "Wright St.",
+            "seo": "wright-st",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "horizon"
+            }
+          ]
+        },
+        "finalMessage": "",
+        "bracketRound": "",
+        "title": "Wright St. Milwaukee",
+        "contestName": "",
+        "url": "/game/6504173",
+        "network": "",
+        "home": {
+          "score": "",
+          "names": {
+            "char6": "MILWKE",
+            "short": "Milwaukee",
+            "seo": "milwaukee",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "horizon"
+            }
+          ]
+        },
+        "liveVideoEnabled": false,
+        "startTime": "8:00 PM ET",
+        "startTimeEpoch": "1769821200",
+        "bracketId": "",
+        "gameState": "pre",
+        "startDate": "01/30/2026",
+        "currentPeriod": "",
+        "videoState": "",
+        "bracketRegion": "",
+        "contestClock": "0:00"
+      }
+    },
+    {
+      "game": {
+        "gameID": "6504589",
+        "away": {
+          "score": "",
+          "names": {
+            "char6": "DAYTON",
+            "short": "Dayton",
+            "seo": "dayton",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "atlantic-10"
+            }
+          ]
+        },
+        "finalMessage": "",
+        "bracketRound": "",
+        "title": "Dayton Saint Louis",
+        "contestName": "",
+        "url": "/game/6504589",
+        "network": "",
+        "home": {
+          "score": "",
+          "names": {
+            "char6": "ST LOU",
+            "short": "Saint Louis",
+            "seo": "saint-louis",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "21",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "atlantic-10"
+            }
+          ]
+        },
+        "liveVideoEnabled": false,
+        "startTime": "8:00 PM ET",
+        "startTimeEpoch": "1769821200",
+        "bracketId": "",
+        "gameState": "pre",
+        "startDate": "01/30/2026",
+        "currentPeriod": "",
+        "videoState": "",
+        "bracketRegion": "",
+        "contestClock": "0:00"
+      }
+    },
+    {
+      "game": {
+        "gameID": "6503154",
+        "away": {
+          "score": "",
+          "names": {
+            "char6": "BOISE",
+            "short": "Boise St.",
+            "seo": "boise-st",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "mountain-west"
+            }
+          ]
+        },
+        "finalMessage": "",
+        "bracketRound": "",
+        "title": "Boise St. Grand Canyon",
+        "contestName": "",
+        "url": "/game/6503154",
+        "network": "",
+        "home": {
+          "score": "",
+          "names": {
+            "char6": "GCANYN",
+            "short": "Grand Canyon",
+            "seo": "grand-canyon",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "mountain-west"
+            }
+          ]
+        },
+        "liveVideoEnabled": false,
+        "startTime": "9:00 PM ET",
+        "startTimeEpoch": "1769824800",
+        "bracketId": "",
+        "gameState": "pre",
+        "startDate": "01/30/2026",
+        "currentPeriod": "",
+        "videoState": "",
+        "bracketRegion": "",
+        "contestClock": "0:00"
+      }
+    },
+    {
+      "game": {
+        "gameID": "6504436",
+        "away": {
+          "score": "",
+          "names": {
+            "char6": "LOYCHI",
+            "short": "Loyola Chicago",
+            "seo": "loyola-chicago",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "atlantic-10"
+            }
+          ]
+        },
+        "finalMessage": "",
+        "bracketRound": "",
+        "title": "Loyola Chicago VCU",
+        "contestName": "",
+        "url": "/game/6504436",
+        "network": "",
+        "home": {
+          "score": "",
+          "names": {
+            "char6": "VCU",
+            "short": "VCU",
+            "seo": "vcu",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "atlantic-10"
+            }
+          ]
+        },
+        "liveVideoEnabled": false,
+        "startTime": "9:00 PM ET",
+        "startTimeEpoch": "1769824800",
+        "bracketId": "",
+        "gameState": "pre",
+        "startDate": "01/30/2026",
+        "currentPeriod": "",
+        "videoState": "",
+        "bracketRegion": "",
+        "contestClock": "0:00"
+      }
+    },
+    {
+      "game": {
+        "gameID": "6530861",
+        "away": {
+          "score": "",
+          "names": {
+            "char6": "UNLV",
+            "short": "UNLV",
+            "seo": "unlv",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "mountain-west"
+            }
+          ]
+        },
+        "finalMessage": "",
+        "bracketRound": "",
+        "title": "UNLV Nevada",
+        "contestName": "",
+        "url": "/game/6530861",
+        "network": "",
+        "home": {
+          "score": "",
+          "names": {
+            "char6": "NEVADA",
+            "short": "Nevada",
+            "seo": "nevada",
+            "full": ""
+          },
+          "winner": false,
+          "seed": "",
+          "description": "",
+          "rank": "",
+          "conferences": [
+            {
+              "conferenceName": "",
+              "conferenceSeo": "mountain-west"
+            }
+          ]
+        },
+        "liveVideoEnabled": false,
+        "startTime": "10:00 PM ET",
+        "startTimeEpoch": "1769828400",
+        "bracketId": "",
+        "gameState": "pre",
+        "startDate": "01/30/2026",
+        "currentPeriod": "",
+        "videoState": "",
+        "bracketRegion": "",
+        "contestClock": "0:00"
+      }
+    }
+  ]
+}
