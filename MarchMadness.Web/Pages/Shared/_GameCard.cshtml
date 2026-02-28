@@ -1,0 +1,73 @@
+﻿@model GameCardModel
+<div class="game-card round-@Model.Round"
+     data-game-id="@Model.Id"
+     data-bracket-position="@Model.BracketPositionId"
+     data-victor-position="@Model.VictorBracketPositionId">
+
+        <!-- First Round - Show actual teams -->
+        <div class="matchup">
+            <div class="btn-group-vertical team-btns" role="group" aria-label="Basic radio toggle button group">
+                <input type="radio"
+                       class="btn-check team-btn"
+                       name="GamePicks[@Model.Id]"
+                       value="@Model.Team1?.Id"
+                       id="game_@(Model.Id)_team1"
+                       data-game-id="@Model.Id"
+                       autocomplete="off">
+                <label for="game_@(Model.Id)_team1" class="team-label">
+                    @if (!string.IsNullOrEmpty(Model.Team1?.LogoUrl))
+                    {
+                        <img src="https://ncaa.com@Model.Team1.LogoUrl" alt="@Model.Team1.NameShort" class="team-logo" onerror="this.style.display='none'" />
+                    }
+                    <span class="team-info">
+                        <span class="seed">@Model.Team1?.Seed</span>
+                        <span class="team-name">@Model.Team1?.NameShort</span>
+                    </span>
+                </label>
+
+                <input type="radio"
+                   class="btn-check team-btn"
+                       name="GamePicks[@Model.Id]"
+                       value="@Model.Team2?.Id"
+                       id="game_@(Model.Id)_team2"
+                       data-game-id="@Model.Id"
+                       autocomplete="off">
+                <label for="game_@(Model.Id)_team2" class="team-label">
+                    @if (!string.IsNullOrEmpty(Model.Team2?.LogoUrl))
+                    {
+                        <img src="https://ncaa.com@Model.Team2.LogoUrl" alt="@Model.Team2.NameShort" class="team-logo" onerror="this.style.display='none'" />
+                    }
+                    <span class="team-info">
+                        <span class="seed">@Model.Team2?.Seed</span>
+                        <span class="team-name">@Model.Team2?.NameShort</span>
+                    </span>
+                </label>
+            </div>
+        </div>
+
+</div>
+
+<style>
+
+    .round-2 {
+        --round-spacing: 2rem;
+    }
+
+    .round-3 {
+        --round-spacing: 7rem;
+    }
+
+    .round-4 {
+        --round-spacing: 10rem;
+    }
+
+    .round-5 {
+        --round-spacing: 4rem;
+    }
+
+    .game-card {
+        margin-top: var(--round-spacing);
+        margin-bottom: var(--round-spacing);
+    }
+
+    </style>

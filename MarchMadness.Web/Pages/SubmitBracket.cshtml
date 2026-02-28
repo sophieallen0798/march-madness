@@ -1,4 +1,5 @@
 @page
+@using MarchMadness.Web.Pages.Shared
 @model MarchMadness.Web.Pages.SubmitBracketModel
 @{
     ViewData["Title"] = $"Submit {(Model.Sport == "basketball-men" ? "Men's" : "Women's")} Bracket";
@@ -30,23 +31,23 @@
                     <div class="card-body p-4">
                         <h3 class="card-title text-center mb-4">Enter Your Name</h3>
                         <p class="text-center text-muted mb-4">Enter your name to get started. Each person can only submit one bracket per tournament.</p>
-                        
+
                         <form method="post" asp-page-handler="VerifyName">
                             <input type="hidden" asp-for="Sport" />
-                            
+
                             <div class="mb-3">
                                 <label asp-for="UserName" class="form-label">Your Name</label>
                                 <input asp-for="UserName" class="form-control form-control-lg" placeholder="Enter your full name" required autofocus />
                                 <div class="form-text">This name will be displayed on the standings page.</div>
                             </div>
-                            
+
                             <div class="d-grid">
                                 <button type="submit" class="btn btn-primary btn-lg">Continue to Bracket</button>
                             </div>
                         </form>
                     </div>
                 </div>
-                
+
                 <div class="text-center mt-3">
                     <small class="text-muted">
                         <i class="bi bi-info-circle"></i> If you already submitted a bracket, you'll need to use a different name.
@@ -68,11 +69,10 @@
         <div class="alert alert-success mb-3">
             <strong>Welcome, @Model.UserName!</strong> Fill out your bracket below and click Submit when finished.
         </div>
-        
         <form method="post" asp-page-handler="SubmitBracket" id="bracketForm">
             <input type="hidden" asp-for="Sport" />
             <input type="hidden" asp-for="UserName" />
-            
+
             <div class="card mb-4">
                 <div class="card-body">
                     <div class="mb-3">
@@ -86,126 +86,96 @@
             <div id="validationMessage" class="alert alert-danger d-none mb-3" role="alert">
                 <strong>Incomplete Bracket!</strong> Please make selections for all highlighted games below.
             </div>
-            <div class="container">
-                <div class="row">
-                    <div class="col align-self-start">
-                        One of three columns
-                    </div>
-                    <div class="col align-self-center">
-                        One of three columns
-                    </div>
-                    <div class="col align-self-end">
-                        One of three columns
-                    </div>
-                </div>
-            </div>
-            <div class="bracket-container">
 
-                <div class="bracket-scroll">
-                    @foreach (var roundGames in Model.GamesByRoundAndRegion.OrderBy(r => r.Key))
+            <div class="row align-items-center row-cols-3">
+
+                @foreach (var region in Model.AllGames.GroupBy(g => g.Region))
+                {
+                    if (region.Key == "Final")
                     {
-                        var roundNumber = roundGames.Key;
-                        var roundName = roundNumber switch
-                        {
-                            2 => "First Round (32 games)",
-                            3 => "Second Round (16 games)",
-                            4 => "Sweet 16 (8 games)",
-                            5 => "Elite 8 (4 games)",
-                            6 => "Final Four (2 games)",
-                            7 => "Championship (1 game)",
-                            _ => $"Round {roundNumber}"
-                        };
+                        // 3 columns - bracketPositionId 601, 701, 602 in that order. 
+                    }
+                    var order = new[] { 2, 3, 4, 5 };
 
-                        <div class="bracket-round" data-round="@roundNumber">
-                            <div class="round-header">@roundName</div>
-                            <div class="round-games">
-                                @foreach (var regionGroup in roundGames.Value.OrderBy(r => r.Key))
+                    @if (region.Key == "East" || region.Key == "MidWest")
+                    {
+                        order = new[] { 5, 4, 3, 2 };
+                    }
+                    <div class="col">
+                        <div class="row align-items-center row-cols-4">
+                            <div class="col">
+                                @foreach (var game in region.Where(r => r.Round == order[0]))
                                 {
-                                    var regionName = regionGroup.Key;
-                                    var regionGames = regionGroup.Value;
-
-                                    @if (!string.IsNullOrEmpty(regionName) && roundNumber <= 5)
-                                    {
-                                        <div class="region-header">@regionName</div>
-                                    }
-
-                                    @foreach (var game in regionGames.OrderBy(g => g.BracketPositionId))
-                                    {
-                                        var isFirstRound = roundNumber == 2;
-                                        var hasTeams = isFirstRound && game.Team1Id.HasValue && game.Team2Id.HasValue;
-
-                                        <div class="bracket-game"
-                                             data-game-id="@game.Id"
-                                             data-round="@roundNumber"
-                                             data-bracket-position="@game.BracketPositionId"
-                                             data-victor-position="@game.VictorBracketPositionId">
-
-                                            @if (hasTeams)
-                                            {
-                                                <!-- First Round - Show actual teams -->
-                                                <div class="matchup">
-                                                    <div class="team-option" data-team-id="@game.Team1Id" data-team-name="@game.Team1?.NameShort" data-team-seed="@game.Team1?.Seed" data-team-logo="@game.Team1?.LogoUrl">
-                                                        <input type="radio"
-                                                               name="GamePicks[@game.Id]"
-                                                               value="@game.Team1Id"
-                                                               id="game_@(game.Id)_team1"
-                                                               class="team-radio"
-                                                               data-game-id="@game.Id"/>
-                                                        <label for="game_@(game.Id)_team1" class="team-label">
-                                                            @if (!string.IsNullOrEmpty(game.Team1?.LogoUrl))
-                                                            {
-                                                                <img src="https://ncaa.com@game.Team1.LogoUrl" alt="@game.Team1.NameShort" class="team-logo" onerror="this.style.display='none'"/>
-                                                            }
-                                                            <span class="team-info">
-                                                                @if (game.Team1?.Seed > 0)
-                                                                {
-                                                                    <span class="seed">@game.Team1.Seed</span>
-                                                                }
-                                                                <span class="team-name">@game.Team1?.NameShort</span>
-                                                            </span>
-                                                        </label>
-                                                    </div>
-                                                    <div class="team-option" data-team-id="@game.Team2Id" data-team-name="@game.Team2?.NameShort" data-team-seed="@game.Team2?.Seed" data-team-logo="@game.Team2?.LogoUrl">
-                                                        <input type="radio"
-                                                               name="GamePicks[@game.Id]"
-                                                               value="@game.Team2Id"
-                                                               id="game_@(game.Id)_team2"
-                                                               class="team-radio"
-                                                               data-game-id="@game.Id"/>
-                                                        <label for="game_@(game.Id)_team2" class="team-label">
-                                                            @if (!string.IsNullOrEmpty(game.Team2?.LogoUrl))
-                                                            {
-                                                                <img src="https://ncaa.com@game.Team2.LogoUrl" alt="@game.Team2.NameShort" class="team-logo" onerror="this.style.display='none'"/>
-                                                            }
-                                                            <span class="team-info">
-                                                                @if (game.Team2?.Seed > 0)
-                                                                {
-                                                                    <span class="seed">@game.Team2.Seed</span>
-                                                                }
-                                                                <span class="team-name">@game.Team2?.NameShort</span>
-                                                            </span>
-                                                        </label>
-                                                    </div>
-                                                </div>
-                                            }
-                                            else
-                                            {
-                                                <!-- Higher Rounds - TBD, will be populated by JavaScript -->
-                                                <div class="matchup tbd">
-                                                    <div class="team-option placeholder" data-slot="1">
-                                                        <span class="team-name">TBD</span>
-                                                    </div>
-                                                    <div class="team-option placeholder" data-slot="2">
-                                                        <span class="team-name">TBD</span>
-                                                    </div>
-                                                </div>
-                                            }
-                                        </div>
-                                    }
+                                    var gameCardModel = new GameCardModel(game);
+                                    <partial name="_GameCard" model="gameCardModel" />
+                                }
+                            </div>
+                            <div class="col">
+                                @foreach (var game in region.Where(r => r.Round == order[1]))
+                                {
+                                    var gameCardModel = new GameCardModel(game);
+                                    <partial name="_GameCard" model="gameCardModel" />
+                                }
+                            </div>
+                            <div class="col">
+                                @foreach (var game in region.Where(r => r.Round == order[2]))
+                                {
+                                    var gameCardModel = new GameCardModel(game);
+                                    <partial name="_GameCard" model="gameCardModel" />
+                                }
+                            </div>
+                            <div class="col">
+                                @foreach (var game in region.Where(r => r.Round == order[3]))
+                                {
+                                    var gameCardModel = new GameCardModel(game);
+                                    <partial name="_GameCard" model="gameCardModel" />
                                 }
                             </div>
                         </div>
-                    }
+                    </div>
+                    <div class="col">
+                        <div class="row align-items-center row-cols-4">
+                            <div class="col">
+                                @foreach (var game in region.Where(r => r.Round == order[0]))
+                                {
+                                    var gameCardModel = new GameCardModel(game);
+                                    <partial name="_GameCard" model="gameCardModel" />
+                                }
+                            </div>
+                            <div class="col">
+                                @foreach (var game in region.Where(r => r.Round == order[1]))
+                                {
+                                    var gameCardModel = new GameCardModel(game);
+                                    <partial name="_GameCard" model="gameCardModel" />
+                                }
+                            </div>
+                            <div class="col">
+                                @foreach (var game in region.Where(r => r.Round == order[2]))
+                                {
+                                    var gameCardModel = new GameCardModel(game);
+                                    <partial name="_GameCard" model="gameCardModel" />
+                                }
+                            </div>
+                            <div class="col">
+                                @foreach (var game in region.Where(r => r.Round == order[3]))
+                                {
+                                    var gameCardModel = new GameCardModel(game);
+                                    <partial name="_GameCard" model="gameCardModel" />
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+
+
+            </div>
+
+            <div class="bracket-container">
+                <div class="bracket-scroll">
+                    <div class="row align-items-center row-cols-3">
+                        <div class="col">
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -214,10 +184,10 @@
                     Submit Bracket
                 </button>
             </div>
+
         </form>
     }
 </div>
-
 <style>
     .bracket-container {
         background: #f8f9fa;
@@ -285,43 +255,56 @@
         position: relative;
     }
 
-    .bracket-game.error {
-        animation: shake 0.5s;
-    }
+        .bracket-game.error {
+            animation: shake 0.5s;
+        }
 
     @@keyframes shake {
-        0%, 100% { transform: translateX(0); }
-        25% { transform: translateX(-8px); }
-        75% { transform: translateX(8px); }
+        0%, 100% {
+            transform: translateX(0);
+        }
+
+        25% {
+            transform: translateX(-8px);
+        }
+
+        75% {
+            transform: translateX(8px);
+        }
     }
 
     .matchup {
         background: white;
-        border: 3px solid #dee2e6;
-        border-radius: 10px;
+        border: 3px solid;
+        border-color: gray;
+        border-radius: 3px;
         overflow: hidden;
         transition: all 0.3s ease;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
 
-    .matchup:hover {
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        transform: translateY(-2px);
-    }
+        .matchup.tbd {
+            background: #f8f9fa;
+            border-style: dashed;
+            border-color: #adb5bd;
+        }
 
-    .matchup.tbd {
-        background: #f8f9fa;
-        border-style: dashed;
-        border-color: #adb5bd;
-    }
-
-    .matchup.error {
-        border-color: #dc3545;
-        background: #fff5f5;
-        box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.25);
-    }
+        .matchup.error {
+            border-color: #dc3545;
+            background: #fff5f5;
+            box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.25);
+        }
 
     .team-option {
+        padding: 14px;
+        border-bottom: 2px solid #e9ecef;
+        transition: background 0.2s ease;
+        cursor: pointer;
+        min-height: 60px;
+        display: flex;
+        align-items: center;
+    }
+
+    .btn-group-vertical {
         padding: 14px;
         border-bottom: 2px solid #e9ecef;
         transition: background 0.2s ease;
@@ -350,14 +333,14 @@
         display: none;
     }
 
-    .team-radio:checked + .team-label {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        font-weight: bold;
-        margin: -14px;
-        padding: 14px;
-        box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
-    }
+        .team-radio:checked + .team-label {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: bold;
+            margin: -14px;
+            padding: 14px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        }
 
     .team-label {
         display: flex;
@@ -370,9 +353,9 @@
         width: 100%;
     }
 
-    .team-label:hover {
-        background: rgba(102, 126, 234, 0.1);
-    }
+        .team-label:hover {
+            background: rgba(102, 126, 234, 0.1);
+        }
 
     .team-radio:checked + .team-label:hover {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -416,7 +399,7 @@
         .bracket-scroll {
             gap: 30px;
         }
-        
+
         .bracket-round {
             min-width: 220px;
         }
@@ -424,20 +407,22 @@
 </style>
 
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const form = document.getElementById('bracketForm');
             const submitBtn = document.getElementById('submitBtn');
             const validationMessage = document.getElementById('validationMessage');
-            
+
             // Build maps for bracket positions and game relationships
             const bracketPositionMap = new Map(); // bracketPositionId -> game element
             const gameIdToPositionMap = new Map(); // gameId -> bracketPositionId
             const positionToGameIdMap = new Map(); // bracketPositionId -> gameId
-            
+
             const games = document.querySelectorAll('.bracket-game');
-            
+
             games.forEach(game => {
                 const position = parseInt(game.dataset.bracketPosition);
                 const gameId = parseInt(game.dataset.gameId);
@@ -462,31 +447,31 @@
                         feeders.push(srcPos);
                     }
                 });
-                
+
                 if (feeders.length === 2) {
                     feeders.sort((a, b) => a - b);
                     return sourcePosition === feeders[0] ? 1 : 2;
                 }
-                
+
                 // Fallback: use position comparison
                 return sourcePosition < targetPosition ? 1 : 2;
             }
 
             // Handle radio button changes for cascading
-            document.querySelectorAll('.team-radio').forEach(radio => {
+            document.querySelectorAll('.btn-check').forEach(radio => {
                 radio.addEventListener('change', function() {
                     const gameDiv = this.closest('.bracket-game');
                     const victorPosition = parseInt(gameDiv.dataset.victorPosition);
                     const selectedTeamId = parseInt(this.value);
                     const sourcePosition = parseInt(gameDiv.dataset.bracketPosition);
-                    
+
                     // Clear error state
                     gameDiv.classList.remove('error');
                     const matchup = gameDiv.querySelector('.matchup');
                     if (matchup) {
                         matchup.classList.remove('error');
                     }
-                    
+
                     // Cascade to next round if applicable
                     if (victorPosition && bracketPositionMap.has(victorPosition)) {
                         updateNextRoundGame(victorPosition, sourcePosition, selectedTeamId, gameDiv);
@@ -516,11 +501,11 @@
                 // Update the next game's team slot
                 const teamOptions = matchup.querySelectorAll('.team-option');
                 const targetOption = teamOptions[targetSlot - 1];
-                
+
                 if (targetOption) {
                     const gameId = nextGame.dataset.gameId;
                     const isPlaceholder = targetOption.classList.contains('placeholder');
-                    
+
                     // Update or create the team option
                     targetOption.classList.remove('placeholder');
                     targetOption.dataset.teamId = teamId;
@@ -528,13 +513,13 @@
                     targetOption.dataset.teamSeed = teamSeed;
                     targetOption.dataset.teamLogo = teamLogo;
                     targetOption.dataset.slot = targetSlot;
-                    
+
                     targetOption.innerHTML = `
-                        <input type="radio" 
-                               name="GamePicks[${gameId}]" 
-                               value="${teamId}" 
-                               id="game_${gameId}_team${targetSlot}" 
-                               class="team-radio" 
+                        <input type="radio"
+                               name="GamePicks[${gameId}]"
+                               value="${teamId}"
+                               id="game_${gameId}_team${targetSlot}"
+                               class="team-radio"
                                data-game-id="${gameId}" />
                         <label for="game_${gameId}_team${targetSlot}" class="team-label">
                             ${teamLogoSrc ? `<img src="${teamLogoSrc}" alt="${teamName}" class="team-logo" onerror="this.style.display='none'" />` : ''}
@@ -544,7 +529,7 @@
                             </span>
                         </label>
                     `;
-                    
+
                     // Re-attach event listener to new radio
                     const newRadio = targetOption.querySelector('.team-radio');
                     if (newRadio) {
@@ -553,17 +538,17 @@
                             const victorPos = parseInt(gameDiv.dataset.victorPosition);
                             const selectedId = parseInt(this.value);
                             const srcPos = parseInt(gameDiv.dataset.bracketPosition);
-                            
+
                             gameDiv.classList.remove('error');
                             const m = gameDiv.querySelector('.matchup');
                             if (m) m.classList.remove('error');
-                            
+
                             if (victorPos && bracketPositionMap.has(victorPos)) {
                                 updateNextRoundGame(victorPos, srcPos, selectedId, gameDiv);
                             }
                         });
                     }
-                    
+
                     // Check if both teams are now populated
                     const allOptions = matchup.querySelectorAll('.team-option');
                     const allPopulated = Array.from(allOptions).every(opt => !opt.classList.contains('placeholder'));
@@ -575,7 +560,7 @@
                 // Clear any selection in the next round game since teams changed
                 const nextGameRadios = nextGame.querySelectorAll('.team-radio');
                 nextGameRadios.forEach(r => r.checked = false);
-                
+
                 // Clear any further cascading
                 const nextVictorPosition = parseInt(nextGame.dataset.victorPosition);
                 if (nextVictorPosition && bracketPositionMap.has(nextVictorPosition)) {
@@ -586,10 +571,10 @@
             function clearCascadingGames(startPosition) {
                 const game = bracketPositionMap.get(startPosition);
                 if (!game) return;
-                
+
                 // Clear selection
                 game.querySelectorAll('.team-radio').forEach(r => r.checked = false);
-                
+
                 // Reset teams to TBD
                 const matchup = game.querySelector('.matchup');
                 if (matchup) {
@@ -604,7 +589,7 @@
                     });
                     matchup.classList.add('tbd');
                 }
-                
+
                 // Recurse to next round
                 const victorPosition = parseInt(game.dataset.victorPosition);
                 if (victorPosition && bracketPositionMap.has(victorPosition)) {
@@ -615,13 +600,13 @@
             // Validation on submit
             submitBtn.addEventListener('click', function(e) {
                 e.preventDefault();
-                
+
                 // Clear previous errors
                 document.querySelectorAll('.bracket-game.error, .matchup.error').forEach(el => {
                     el.classList.remove('error');
                 });
                 validationMessage.classList.add('d-none');
-                
+
                 // Check all non-TBD games have selections
                 let hasErrors = false;
                 games.forEach(game => {
@@ -629,7 +614,7 @@
                     if (matchup && !matchup.classList.contains('tbd')) {
                         const radios = game.querySelectorAll('.team-radio');
                         const hasSelection = Array.from(radios).some(r => r.checked);
-                        
+
                         if (!hasSelection) {
                             game.classList.add('error');
                             matchup.classList.add('error');
@@ -637,7 +622,7 @@
                         }
                     }
                 });
-                
+
                 if (hasErrors) {
                     validationMessage.classList.remove('d-none');
                     // Scroll to first error

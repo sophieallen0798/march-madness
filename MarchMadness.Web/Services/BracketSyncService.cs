@@ -244,8 +244,7 @@ namespace MarchMadness.Web.Services
                     3 => "West",
                     4 => "South",
                     5 => "Midwest",
-                    6 => "Final Four",
-                    7 => "Championship",
+                    6 => "Finals",
                     _ => $"Region{sectionId}"
                 };
             }
