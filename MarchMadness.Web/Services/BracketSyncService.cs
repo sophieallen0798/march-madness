@@ -231,28 +231,21 @@ namespace MarchMadness.Web.Services
 
         private string MapSectionIdToRegion(int sectionId, Championship championship)
         {
-            // Try to find the region name from championship regions data
+            _logger.LogInformation("Mapping sectionId {SectionId} to region name...", sectionId);
             if (championship.Regions != null && championship.Regions.Any())
             {
-                // In NCAA brackets, region mapping varies but generally:
-                // The bracket has 4 main regions that typically appear in section IDs
-                // Return a consistent name based on sectionId
-                return sectionId switch
+                var region = championship.Regions.FirstOrDefault(r => r.SectionId == sectionId);
+                if (region != null)
                 {
-                    1 => "Play-In", // First Four play-in games
-                    2 => "East",
-                    3 => "West",
-                    4 => "South",
-                    5 => "Midwest",
-                    6 => "Finals",
-                    _ => $"Region{sectionId}"
-                };
+                    if (region.RegionCode == "CC")
+                        return "Final";
+
+                    if (!string.IsNullOrEmpty(region.Title))
+                        return region.Title;
+                }
             }
-            
-            // Fallback if no regions data
-            return sectionId <= 1 ? "Play-In" : 
-                   sectionId >= 6 ? "Finals" : 
-                   $"Region{sectionId}";
+
+            return $"Region{sectionId}";
         }
     }
 }

@@ -97,7 +97,7 @@ namespace MarchMadness.Web.Pages
             }
 
             var expectedGameCount = await _context.Games
-                .Where(g => g.Sport == Sport && g.Year == 2025 && g.Round >= 2 && g.Team1Id.HasValue && g.Team2Id.HasValue)
+                .Where(g => g.Sport == Sport && g.Year == 2025 && g.Round >= 2)
                 .CountAsync();
 
             if (GamePicks.Count != expectedGameCount)

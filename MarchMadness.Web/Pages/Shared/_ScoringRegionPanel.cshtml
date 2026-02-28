@@ -1,0 +1,21 @@
+@using MarchMadness.Web.Pages.Shared
+@model ScoringRegionPanelModel
+
+<section class="region-panel card shadow-sm @Model.PanelClass">
+    <div class="card-header py-2 text-center fw-semibold">@Model.RegionName</div>
+    <div class="card-body p-2">
+        <div class="row row-cols-4 g-3 align-items-stretch region-board">
+            @foreach (var round in Model.RoundOrder)
+            {
+                <div class="col d-flex">
+                    <div class="d-flex flex-column justify-content-around w-100 round-games">
+                        @foreach (var game in Model.Games.Where(g => g.Round == round).OrderBy(g => g.BracketPositionId))
+                        {
+                            <partial name="_ScoringGameCard" model="game" />
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</section>

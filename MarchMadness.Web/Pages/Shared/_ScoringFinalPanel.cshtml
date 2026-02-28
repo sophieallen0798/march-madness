@@ -1,0 +1,22 @@
+@using MarchMadness.Web.Pages.Shared
+@model ScoringFinalPanelModel
+
+<section class="region-panel card shadow-sm region-panel-final">
+    <div class="card-header py-2 text-center fw-semibold">Final Four / Championship</div>
+    <div class="card-body p-2">
+        <div class="row row-cols-3 g-2 align-items-stretch final-round-wrap">
+            @foreach (var position in new[] { 601, 701, 602 })
+            {
+                var game = Model.Games.FirstOrDefault(g => g.BracketPositionId == position);
+                <div class="col d-flex">
+                    <div class="d-flex flex-column justify-content-center w-100">
+                        @if (game != null)
+                        {
+                            <partial name="_ScoringGameCard" model="game" />
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</section>

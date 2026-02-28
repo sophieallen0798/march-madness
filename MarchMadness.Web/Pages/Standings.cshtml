@@ -32,8 +32,11 @@
                                 <th>Rank</th>
                                 <th>Bracket Name</th>
                                 <th>User</th>
+                                <th>Champion</th>
                                 <th>Points</th>
+                                <th>Possible</th>
                                 <th>Submitted</th>
+                                <th></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -60,8 +63,11 @@
                                     </td>
                                     <td>@standing.BracketName</td>
                                     <td>@standing.UserName</td>
+                                    <td>@standing.ChampionPick</td>
                                     <td><strong>@standing.TotalPoints</strong></td>
+                                    <td>@standing.PointsPossible</td>
                                     <td>@standing.SubmittedDate.ToString("MMM dd, yyyy h:mm tt")</td>
+                                    <td><a href="/MyBracket?sport=@Model.Sport&bracketId=@standing.BracketId" class="btn btn-sm btn-outline-secondary">View Bracket</a></td>
                                 </tr>
                             }
                         </tbody>

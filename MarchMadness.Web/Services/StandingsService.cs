@@ -20,21 +20,78 @@ namespace MarchMadness.Web.Services
                 .Where(b => b.Sport == sport && b.Year == year)
                 .ToListAsync();
 
+            // Build set of eliminated team IDs (lost in any completed game)
+            var decidedGames = await _context.Games
+                .Where(g => g.Sport == sport && g.Year == year && g.WinnerId.HasValue)
+                .Select(g => new { g.Team1Id, g.Team2Id, g.WinnerId })
+                .ToListAsync();
+
+            var eliminatedSet = new HashSet<int>();
+            foreach (var g in decidedGames)
+            {
+                if (g.Team1Id.HasValue && g.Team1Id != g.WinnerId)
+                    eliminatedSet.Add(g.Team1Id.Value);
+                if (g.Team2Id.HasValue && g.Team2Id != g.WinnerId)
+                    eliminatedSet.Add(g.Team2Id.Value);
+            }
+
             var standings = new List<BracketStanding>();
 
             foreach (var bracket in brackets)
             {
-                var points = await CalculateBracketPointsAsync(bracket.Id);
+                // Load all picks with their games in one query
+                var picks = await _context.Picks
+                    .Include(p => p.Game)
+                    .Include(p => p.PickedTeam)
+                    .Where(p => p.BracketId == bracket.Id)
+                    .ToListAsync();
+
+                int totalPoints = 0;
+                int pointsPossible = 0;
+                string? championName = null;
+
+                foreach (var pick in picks)
+                {
+                    int roundPoints = (int)Math.Pow(2, pick.Game.Round - 1);
+
+                    if (pick.Game.WinnerId.HasValue)
+                    {
+                        // Game decided: count if pick was correct
+                        if (pick.PickedTeamId == pick.Game.WinnerId)
+                        {
+                            totalPoints += roundPoints;
+                            pointsPossible += roundPoints;
+                        }
+                    }
+                    else
+                    {
+                        // Game not decided: count as possible if picked team is still alive
+                        if (!eliminatedSet.Contains(pick.PickedTeamId))
+                            pointsPossible += roundPoints;
+                    }
+
+                    // Capture championship pick
+                    if (pick.Game.Round == 7)
+                        championName = pick.PickedTeam?.NameShort;
+                }
+
+                // Persist total points
+                bracket.TotalPoints = totalPoints;
+
                 standings.Add(new BracketStanding
                 {
                     BracketId = bracket.Id,
                     BracketName = bracket.BracketName,
                     UserName = bracket.User.Name,
-                    TotalPoints = points,
+                    TotalPoints = totalPoints,
+                    PointsPossible = pointsPossible,
                     SubmittedDate = bracket.SubmittedDate,
-                    Sport = sport
+                    Sport = sport,
+                    ChampionPick = championName ?? "—"
                 });
             }
+
+            await _context.SaveChangesAsync();
 
             return standings.OrderByDescending(s => s.TotalPoints)
                            .ThenBy(s => s.SubmittedDate)
@@ -101,7 +158,9 @@ namespace MarchMadness.Web.Services
         public string BracketName { get; set; } = string.Empty;
         public string UserName { get; set; } = string.Empty;
         public int TotalPoints { get; set; }
+        public int PointsPossible { get; set; }
         public DateTime SubmittedDate { get; set; }
         public string Sport { get; set; } = string.Empty;
+        public string ChampionPick { get; set; } = string.Empty;
     }
 }

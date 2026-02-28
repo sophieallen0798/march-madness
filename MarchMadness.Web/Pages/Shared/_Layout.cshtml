@@ -6,6 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - MarchMadness.Web</title>
     <link rel="stylesheet" href="~/css/bootstrap-custom.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/scoring.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/MarchMadness.Web.styles.css" asp-append-version="true" />
 </head>
 
 <body>
@@ -50,6 +52,18 @@
                                         asp-route-sport="basketball-women">Women's Basketball</a></li>
                             </ul>
                         </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle text-dark" href="#" id="myBracketDropdown" role="button"
+                                data-bs-toggle="dropdown" aria-expanded="false">
+                                My Bracket
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="myBracketDropdown">
+                                <li><a class="dropdown-item" asp-area="" asp-page="/MyBracket"
+                                        asp-route-sport="basketball-men">Men's Basketball</a></li>
+                                <li><a class="dropdown-item" asp-area="" asp-page="/MyBracket"
+                                        asp-route-sport="basketball-women">Women's Basketball</a></li>
+                            </ul>
+                        </li>
                         @if (User.Identity?.IsAuthenticated == true)
                         {
                         var adminUsers = new[] { "EVR\\sallen", "EVR\\sallen-t1" };
@@ -66,7 +80,7 @@
             </div>
         </nav>
     </header>
-    <div class="container">
+    <div class="@(ViewData["FullWidth"] as bool? == true ? "container-fluid" : "container")">
         <main role="main" class="pb-3">
             @RenderBody()
         </main>

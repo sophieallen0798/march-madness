@@ -3,9 +3,10 @@
 @model MarchMadness.Web.Pages.SubmitBracketModel
 @{
     ViewData["Title"] = $"Submit {(Model.Sport == "basketball-men" ? "Men's" : "Women's")} Bracket";
+    ViewData["FullWidth"] = true;
 }
 
-<div class="container-fluid mt-4">
+<div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>@ViewData["Title"]</h1>
         <div class="btn-group">
@@ -73,107 +74,88 @@
             <input type="hidden" asp-for="Sport" />
             <input type="hidden" asp-for="UserName" />
 
-            <div class="card mb-4">
-                <div class="card-body">
-                    <div class="mb-3">
-                        <label asp-for="BracketName" class="form-label">Bracket Name (Optional)</label>
-                        <input asp-for="BracketName" class="form-control" placeholder="e.g., 'My Championship Picks'" />
-                        <div class="form-text">If not provided, will default to "@Model.UserName's Bracket"</div>
-                    </div>
-                </div>
-            </div>
-
             <div id="validationMessage" class="alert alert-danger d-none mb-3" role="alert">
                 <strong>Incomplete Bracket!</strong> Please make selections for all highlighted games below.
             </div>
 
-            <div class="row align-items-center row-cols-3">
+            @{
+                var allGames = Model.AllPossibleGames.OrderBy(g => g.Round).ThenBy(g => g.BracketPositionId).ToList();
+                var leftRoundOrder = new[] { 2, 3, 4, 5 };
+                var rightRoundOrder = new[] { 5, 4, 3, 2 };
+                var finalBracketOrder = new[] { 601, 701, 602 };
 
-                @foreach (var region in Model.AllGames.GroupBy(g => g.Region))
+                var leftPanels = new[] { "South", "West" }
+                    .Select(regionName => new BracketRegionPanelModel
+                    {
+                        RegionName = regionName,
+                        Games = allGames.Where(g => string.Equals(g.Region, regionName, StringComparison.OrdinalIgnoreCase)).ToList(),
+                        RoundOrder = leftRoundOrder,
+                        PanelClass = "region-panel-left"
+                    })
+                    .Where(p => p.Games.Any())
+                    .ToList();
+
+                var rightPanels = new[] { "East", "Midwest" }
+                    .Select(regionName => new BracketRegionPanelModel
+                    {
+                        RegionName = regionName,
+                        Games = allGames.Where(g => string.Equals(g.Region, regionName, StringComparison.OrdinalIgnoreCase)).ToList(),
+                        RoundOrder = rightRoundOrder,
+                        PanelClass = "region-panel-right"
+                    })
+                    .Where(p => p.Games.Any())
+                    .ToList();
+
+                BracketFinalPanelModel? finalPanel = new BracketFinalPanelModel
                 {
-                    if (region.Key == "Final")
-                    {
-                        // 3 columns - bracketPositionId 601, 701, 602 in that order. 
-                    }
-                    var order = new[] { 2, 3, 4, 5 };
+                    Games = allGames
+                        .Where(g => string.Equals(g.Region, "Final", StringComparison.OrdinalIgnoreCase)
+                                 || string.Equals(g.Region, "Finals", StringComparison.OrdinalIgnoreCase)
+                                 || string.Equals(g.Region, "Region6", StringComparison.OrdinalIgnoreCase))
+                        .OrderBy(g => Array.IndexOf(finalBracketOrder, g.BracketPositionId))
+                        .ThenBy(g => g.BracketPositionId)
+                        .ToList()
+                };
+            }
 
-                    @if (region.Key == "East" || region.Key == "MidWest")
-                    {
-                        order = new[] { 5, 4, 3, 2 };
-                    }
-                    <div class="col">
-                        <div class="row align-items-center row-cols-4">
-                            <div class="col">
-                                @foreach (var game in region.Where(r => r.Round == order[0]))
-                                {
-                                    var gameCardModel = new GameCardModel(game);
-                                    <partial name="_GameCard" model="gameCardModel" />
-                                }
-                            </div>
-                            <div class="col">
-                                @foreach (var game in region.Where(r => r.Round == order[1]))
-                                {
-                                    var gameCardModel = new GameCardModel(game);
-                                    <partial name="_GameCard" model="gameCardModel" />
-                                }
-                            </div>
-                            <div class="col">
-                                @foreach (var game in region.Where(r => r.Round == order[2]))
-                                {
-                                    var gameCardModel = new GameCardModel(game);
-                                    <partial name="_GameCard" model="gameCardModel" />
-                                }
-                            </div>
-                            <div class="col">
-                                @foreach (var game in region.Where(r => r.Round == order[3]))
-                                {
-                                    var gameCardModel = new GameCardModel(game);
-                                    <partial name="_GameCard" model="gameCardModel" />
-                                }
-                            </div>
+            <div class="card w-100 bracket-shell" style="overflow: auto;">
+                <div class="card-body p-0">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-3">
+
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="small text-muted">Scroll to navigate · Use zoom controls for detail</div>
+                            <button type="button" id="autofillBtn" class="btn btn-sm btn-outline-warning" title="Randomly fill all remaining picks">
+                                🎲 Autofill
+                            </button>
+                        </div>
+                        <div class="btn-group btn-group-sm" role="group" aria-label="Bracket zoom controls">
+                            <button type="button" id="zoomOutBtn" class="btn btn-outline-secondary">-</button>
+                            <button type="button" id="zoomResetBtn" class="btn btn-outline-secondary">100%</button>
+                            <button type="button" id="zoomInBtn" class="btn btn-outline-secondary">+</button>
                         </div>
                     </div>
-                    <div class="col">
-                        <div class="row align-items-center row-cols-4">
-                            <div class="col">
-                                @foreach (var game in region.Where(r => r.Round == order[0]))
-                                {
-                                    var gameCardModel = new GameCardModel(game);
-                                    <partial name="_GameCard" model="gameCardModel" />
-                                }
-                            </div>
-                            <div class="col">
-                                @foreach (var game in region.Where(r => r.Round == order[1]))
-                                {
-                                    var gameCardModel = new GameCardModel(game);
-                                    <partial name="_GameCard" model="gameCardModel" />
-                                }
-                            </div>
-                            <div class="col">
-                                @foreach (var game in region.Where(r => r.Round == order[2]))
-                                {
-                                    var gameCardModel = new GameCardModel(game);
-                                    <partial name="_GameCard" model="gameCardModel" />
-                                }
-                            </div>
-                            <div class="col">
-                                @foreach (var game in region.Where(r => r.Round == order[3]))
-                                {
-                                    var gameCardModel = new GameCardModel(game);
-                                    <partial name="_GameCard" model="gameCardModel" />
-                                }
-                            </div>
-                        </div>
-                    </div>
-                }
 
+                    <div class="bracket-scroll" id="bracketScroll">
+                        <div class="bracket-zoom-surface" id="bracketZoomSurface">
+                            <div class="row row-cols-3 align-items-start flex-nowrap gx-3 bracket-board">
+                                <div class="col bracket-board-col">
+                                    @foreach (var panel in leftPanels)
+                                    {
+                                        <partial name="_BracketRegionPanel" model="panel" />
+                                    }
+                                </div>
 
-            </div>
+                                <div class="col bracket-board-col bracket-board-col-final">
+                                    <partial name="_BracketFinalPanel" model="finalPanel" />
+                                </div>
 
-            <div class="bracket-container">
-                <div class="bracket-scroll">
-                    <div class="row align-items-center row-cols-3">
-                        <div class="col">
+                                <div class="col bracket-board-col">
+                                    @foreach (var panel in rightPanels)
+                                    {
+                                        <partial name="_BracketRegionPanel" model="panel" />
+                                    }
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -188,223 +170,6 @@
         </form>
     }
 </div>
-<style>
-    .bracket-container {
-        background: #f8f9fa;
-        border: 1px solid #dee2e6;
-        border-radius: 8px;
-        padding: 20px;
-        margin-bottom: 20px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-
-    .bracket-scroll {
-        overflow-x: auto;
-        overflow-y: hidden;
-        display: flex;
-        gap: 50px;
-        padding: 20px 10px;
-        min-height: 700px;
-    }
-
-    .bracket-round {
-        min-width: 280px;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .round-header {
-        font-size: 1.3rem;
-        font-weight: bold;
-        text-align: center;
-        margin-bottom: 25px;
-        padding: 12px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        position: sticky;
-        top: 0;
-        z-index: 10;
-    }
-
-    .round-games {
-        display: flex;
-        flex-direction: column;
-        justify-content: space-around;
-        flex: 1;
-    }
-
-    .region-header {
-        font-size: 1rem;
-        font-weight: 600;
-        text-align: center;
-        margin: 20px 0 15px 0;
-        padding: 8px;
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        color: white;
-        border-radius: 6px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.15);
-    }
-
-    .bracket-game {
-        margin: 15px 0;
-        transition: all 0.3s ease;
-        position: relative;
-    }
-
-        .bracket-game.error {
-            animation: shake 0.5s;
-        }
-
-    @@keyframes shake {
-        0%, 100% {
-            transform: translateX(0);
-        }
-
-        25% {
-            transform: translateX(-8px);
-        }
-
-        75% {
-            transform: translateX(8px);
-        }
-    }
-
-    .matchup {
-        background: white;
-        border: 3px solid;
-        border-color: gray;
-        border-radius: 3px;
-        overflow: hidden;
-        transition: all 0.3s ease;
-    }
-
-        .matchup.tbd {
-            background: #f8f9fa;
-            border-style: dashed;
-            border-color: #adb5bd;
-        }
-
-        .matchup.error {
-            border-color: #dc3545;
-            background: #fff5f5;
-            box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.25);
-        }
-
-    .team-option {
-        padding: 14px;
-        border-bottom: 2px solid #e9ecef;
-        transition: background 0.2s ease;
-        cursor: pointer;
-        min-height: 60px;
-        display: flex;
-        align-items: center;
-    }
-
-    .btn-group-vertical {
-        padding: 14px;
-        border-bottom: 2px solid #e9ecef;
-        transition: background 0.2s ease;
-        cursor: pointer;
-        min-height: 60px;
-        display: flex;
-        align-items: center;
-    }
-
-    .team-option:last-child {
-        border-bottom: none;
-    }
-
-    .team-option:hover:not(.placeholder) {
-        background: #f8f9fa;
-    }
-
-    .team-option.placeholder {
-        color: #6c757d;
-        cursor: default;
-        font-style: italic;
-        justify-content: center;
-    }
-
-    .team-radio {
-        display: none;
-    }
-
-        .team-radio:checked + .team-label {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            font-weight: bold;
-            margin: -14px;
-            padding: 14px;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
-        }
-
-    .team-label {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        cursor: pointer;
-        border-radius: 6px;
-        transition: all 0.2s ease;
-        margin: 0;
-        width: 100%;
-    }
-
-        .team-label:hover {
-            background: rgba(102, 126, 234, 0.1);
-        }
-
-    .team-radio:checked + .team-label:hover {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    }
-
-    .team-logo {
-        width: 32px;
-        height: 32px;
-        object-fit: contain;
-        flex-shrink: 0;
-    }
-
-    .team-info {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        flex: 1;
-    }
-
-    .seed {
-        font-weight: bold;
-        font-size: 1rem;
-        min-width: 25px;
-        text-align: center;
-        background: rgba(0,0,0,0.05);
-        padding: 2px 6px;
-        border-radius: 4px;
-    }
-
-    .team-radio:checked + .team-label .seed {
-        background: rgba(255,255,255,0.2);
-    }
-
-    .team-name {
-        font-size: 1.05rem;
-        font-weight: 500;
-    }
-
-    /* Responsive adjustments */
-    @@media (max-width: 768px) {
-        .bracket-scroll {
-            gap: 30px;
-        }
-
-        .bracket-round {
-            min-width: 220px;
-        }
-    }
-</style>
 
 @section Scripts {
     @{
@@ -414,38 +179,82 @@
         document.addEventListener('DOMContentLoaded', function() {
             const form = document.getElementById('bracketForm');
             const submitBtn = document.getElementById('submitBtn');
+            const autofillBtn = document.getElementById('autofillBtn');
             const validationMessage = document.getElementById('validationMessage');
+            const bracketScroll = document.getElementById('bracketScroll');
+            const bracketZoomSurface = document.getElementById('bracketZoomSurface');
+            const zoomInBtn = document.getElementById('zoomInBtn');
+            const zoomOutBtn = document.getElementById('zoomOutBtn');
+            const zoomResetBtn = document.getElementById('zoomResetBtn');
+            const bracketBoard = bracketZoomSurface?.querySelector('.bracket-board');
 
-            // Build maps for bracket positions and game relationships
-            const bracketPositionMap = new Map(); // bracketPositionId -> game element
-            const gameIdToPositionMap = new Map(); // gameId -> bracketPositionId
-            const positionToGameIdMap = new Map(); // bracketPositionId -> gameId
+            if (!form || !submitBtn || !validationMessage || !bracketScroll || !bracketZoomSurface || !bracketBoard) {
+                return;
+            }
 
+            // ── Zoom ──
+            let currentZoom = 1;
+            let minZoom = 0.35;
+            const maxZoom = 1.6;
+            const zoomStep = 0.1;
+            const baseBoardWidth = Math.max(bracketBoard.scrollWidth, 1);
+
+            function getFitZoom() {
+                const horizontalFit = bracketScroll.clientWidth / baseBoardWidth;
+                return Math.max(0.2, Math.min(1, horizontalFit));
+            }
+
+            function applyZoom() {
+                minZoom = getFitZoom();
+                currentZoom = Math.max(minZoom, Math.min(maxZoom, Math.round(currentZoom * 100) / 100));
+                bracketZoomSurface.style.zoom = `${currentZoom}`;
+                bracketZoomSurface.style.transform = 'none';
+                bracketZoomSurface.style.width = `${baseBoardWidth}px`;
+                if (zoomResetBtn) zoomResetBtn.textContent = `${Math.round(currentZoom * 100)}%`;
+            }
+
+            function fitToPanel() {
+                currentZoom = getFitZoom();
+                applyZoom();
+                bracketScroll.scrollLeft = 0;
+                bracketScroll.scrollTop = 0;
+            }
+
+            zoomInBtn?.addEventListener('click', () => { currentZoom += zoomStep; applyZoom(); });
+            zoomOutBtn?.addEventListener('click', () => { currentZoom -= zoomStep; applyZoom(); });
+            zoomResetBtn?.addEventListener('click', () => { fitToPanel(); });
+
+            window.addEventListener('resize', () => {
+                const fitZoom = getFitZoom();
+                if (currentZoom < fitZoom) currentZoom = fitZoom;
+                applyZoom();
+            });
+
+            bracketScroll.addEventListener('wheel', function(e) {
+                if (!e.ctrlKey) return;
+                e.preventDefault();
+                currentZoom += e.deltaY < 0 ? zoomStep : -zoomStep;
+                applyZoom();
+            }, { passive: false });
+
+            fitToPanel();
+
+            // ── Game position map ──
+            const bracketPositionMap = new Map();
             const games = document.querySelectorAll('.bracket-game');
 
             games.forEach(game => {
                 const position = parseInt(game.dataset.bracketPosition);
-                const gameId = parseInt(game.dataset.gameId);
-                if (!isNaN(position)) {
-                    bracketPositionMap.set(position, game);
-                    gameIdToPositionMap.set(gameId, position);
-                    positionToGameIdMap.set(position, gameId);
-                }
+                if (!isNaN(position)) bracketPositionMap.set(position, game);
             });
 
-            // Determine which slot (1 or 2) a game feeds into in the next round
-            // This is based on the bracket structure where:
-            // - Lower bracketPositionIds go to slot 1 (top)
-            // - Higher bracketPositionIds go to slot 2 (bottom)
+            // ── Slot determination ──
             function determineTargetSlot(sourcePosition, targetPosition) {
-                // Find all games that feed into the target position
                 const feeders = [];
                 games.forEach(g => {
                     const victorPos = parseInt(g.dataset.victorPosition);
                     const srcPos = parseInt(g.dataset.bracketPosition);
-                    if (victorPos === targetPosition) {
-                        feeders.push(srcPos);
-                    }
+                    if (victorPos === targetPosition) feeders.push(srcPos);
                 });
 
                 if (feeders.length === 2) {
@@ -453,32 +262,32 @@
                     return sourcePosition === feeders[0] ? 1 : 2;
                 }
 
-                // Fallback: use position comparison
                 return sourcePosition < targetPosition ? 1 : 2;
             }
 
-            // Handle radio button changes for cascading
-            document.querySelectorAll('.btn-check').forEach(radio => {
-                radio.addEventListener('change', function() {
-                    const gameDiv = this.closest('.bracket-game');
-                    const victorPosition = parseInt(gameDiv.dataset.victorPosition);
-                    const selectedTeamId = parseInt(this.value);
-                    const sourcePosition = parseInt(gameDiv.dataset.bracketPosition);
+            // ── Radio change handler ──
+            function handleRadioChange(radio) {
+                const gameDiv = radio.closest('.bracket-game');
+                if (!gameDiv) return;
 
-                    // Clear error state
-                    gameDiv.classList.remove('error');
-                    const matchup = gameDiv.querySelector('.matchup');
-                    if (matchup) {
-                        matchup.classList.remove('error');
-                    }
+                const victorPosition = parseInt(gameDiv.dataset.victorPosition);
+                const selectedTeamId = parseInt(radio.value);
+                const sourcePosition = parseInt(gameDiv.dataset.bracketPosition);
 
-                    // Cascade to next round if applicable
-                    if (victorPosition && bracketPositionMap.has(victorPosition)) {
-                        updateNextRoundGame(victorPosition, sourcePosition, selectedTeamId, gameDiv);
-                    }
-                });
+                gameDiv.classList.remove('error');
+                const matchup = gameDiv.querySelector('.matchup');
+                if (matchup) matchup.classList.remove('error');
+
+                if (victorPosition && bracketPositionMap.has(victorPosition)) {
+                    updateNextRoundGame(victorPosition, sourcePosition, selectedTeamId, gameDiv);
+                }
+            }
+
+            document.querySelectorAll('.team-radio').forEach(radio => {
+                radio.addEventListener('change', function() { handleRadioChange(this); });
             });
 
+            // ── Propagate winner to next round ──
             function updateNextRoundGame(victorPosition, sourcePosition, teamId, sourceGame) {
                 const nextGame = bracketPositionMap.get(victorPosition);
                 if (!nextGame) return;
@@ -486,10 +295,7 @@
                 const matchup = nextGame.querySelector('.matchup');
                 if (!matchup) return;
 
-                // Determine which slot (1 or 2) this team should go into
                 const targetSlot = determineTargetSlot(sourcePosition, victorPosition);
-
-                // Get selected team info
                 const teamOption = sourceGame.querySelector(`[data-team-id="${teamId}"]`);
                 if (!teamOption) return;
 
@@ -498,15 +304,12 @@
                 const teamLogo = teamOption.dataset.teamLogo || '';
                 const teamLogoSrc = teamLogo ? `https://ncaa.com${teamLogo}` : '';
 
-                // Update the next game's team slot
                 const teamOptions = matchup.querySelectorAll('.team-option');
                 const targetOption = teamOptions[targetSlot - 1];
 
                 if (targetOption) {
                     const gameId = nextGame.dataset.gameId;
-                    const isPlaceholder = targetOption.classList.contains('placeholder');
 
-                    // Update or create the team option
                     targetOption.classList.remove('placeholder');
                     targetOption.dataset.teamId = teamId;
                     targetOption.dataset.teamName = teamName;
@@ -519,67 +322,47 @@
                                name="GamePicks[${gameId}]"
                                value="${teamId}"
                                id="game_${gameId}_team${targetSlot}"
-                               class="team-radio"
+                               class="form-check-input team-radio"
                                data-game-id="${gameId}" />
-                        <label for="game_${gameId}_team${targetSlot}" class="team-label">
-                            ${teamLogoSrc ? `<img src="${teamLogoSrc}" alt="${teamName}" class="team-logo" onerror="this.style.display='none'" />` : ''}
-                            <span class="team-info">
-                                ${teamSeed ? `<span class="seed">${teamSeed}</span>` : ''}
-                                <span class="team-name">${teamName}</span>
+                        <label for="game_${gameId}_team${targetSlot}" class="form-check-label w-100 ms-2">
+                            <span class="d-flex align-items-center gap-2">
+                                ${teamLogoSrc ? `<img src="${teamLogoSrc}" alt="${teamName}" class="team-logo" onerror="this.style.display='none'" />` : ''}
+                                ${teamSeed ? `<span class="small text-muted">${teamSeed}</span>` : ''}
+                                <span>${teamName}</span>
                             </span>
                         </label>
                     `;
 
-                    // Re-attach event listener to new radio
                     const newRadio = targetOption.querySelector('.team-radio');
                     if (newRadio) {
-                        newRadio.addEventListener('change', function() {
-                            const gameDiv = this.closest('.bracket-game');
-                            const victorPos = parseInt(gameDiv.dataset.victorPosition);
-                            const selectedId = parseInt(this.value);
-                            const srcPos = parseInt(gameDiv.dataset.bracketPosition);
-
-                            gameDiv.classList.remove('error');
-                            const m = gameDiv.querySelector('.matchup');
-                            if (m) m.classList.remove('error');
-
-                            if (victorPos && bracketPositionMap.has(victorPos)) {
-                                updateNextRoundGame(victorPos, srcPos, selectedId, gameDiv);
-                            }
-                        });
+                        newRadio.addEventListener('change', function() { handleRadioChange(this); });
                     }
 
-                    // Check if both teams are now populated
                     const allOptions = matchup.querySelectorAll('.team-option');
                     const allPopulated = Array.from(allOptions).every(opt => !opt.classList.contains('placeholder'));
-                    if (allPopulated) {
-                        matchup.classList.remove('tbd');
-                    }
+                    if (allPopulated) matchup.classList.remove('tbd');
                 }
 
-                // Clear any selection in the next round game since teams changed
                 const nextGameRadios = nextGame.querySelectorAll('.team-radio');
                 nextGameRadios.forEach(r => r.checked = false);
 
-                // Clear any further cascading
                 const nextVictorPosition = parseInt(nextGame.dataset.victorPosition);
                 if (nextVictorPosition && bracketPositionMap.has(nextVictorPosition)) {
                     clearCascadingGames(nextVictorPosition);
                 }
             }
 
+            // ── Clear downstream ──
             function clearCascadingGames(startPosition) {
                 const game = bracketPositionMap.get(startPosition);
                 if (!game) return;
 
-                // Clear selection
                 game.querySelectorAll('.team-radio').forEach(r => r.checked = false);
 
-                // Reset teams to TBD
                 const matchup = game.querySelector('.matchup');
                 if (matchup) {
                     const teamOptions = matchup.querySelectorAll('.team-option');
-                    teamOptions.forEach((opt, idx) => {
+                    teamOptions.forEach(opt => {
                         opt.classList.add('placeholder');
                         opt.innerHTML = '<span class="team-name">TBD</span>';
                         opt.dataset.teamId = '';
@@ -590,24 +373,54 @@
                     matchup.classList.add('tbd');
                 }
 
-                // Recurse to next round
                 const victorPosition = parseInt(game.dataset.victorPosition);
                 if (victorPosition && bracketPositionMap.has(victorPosition)) {
                     clearCascadingGames(victorPosition);
                 }
             }
 
-            // Validation on submit
+            // ── Autofill ──
+            autofillBtn?.addEventListener('click', function(e) {
+                e.preventDefault();
+
+                // Process games round-by-round so feeder picks propagate properly
+                const maxRound = 7;
+                for (let round = 2; round <= maxRound; round++) {
+                    games.forEach(game => {
+                        const gameRound = parseInt(game.dataset.round);
+                        if (gameRound !== round) return;
+
+                        // Skip if already picked
+                        const existingRadios = game.querySelectorAll('.team-radio');
+                        const alreadyPicked = Array.from(existingRadios).some(r => r.checked);
+                        if (alreadyPicked) return;
+
+                        // Gather available (non-placeholder) team options
+                        const opts = game.querySelectorAll('.team-option:not(.placeholder)');
+                        if (opts.length < 2) return; // both teams must be populated
+
+                        // Pick a random team option
+                        const randomIdx = Math.floor(Math.random() * opts.length);
+                        const chosenOpt = opts[randomIdx];
+                        const radio = chosenOpt.querySelector('.team-radio');
+                        if (radio) {
+                            radio.checked = true;
+                            handleRadioChange(radio);
+                        }
+                    });
+                }
+
+            });
+
+            // ── Submit validation ──
             submitBtn.addEventListener('click', function(e) {
                 e.preventDefault();
 
-                // Clear previous errors
                 document.querySelectorAll('.bracket-game.error, .matchup.error').forEach(el => {
                     el.classList.remove('error');
                 });
                 validationMessage.classList.add('d-none');
 
-                // Check all non-TBD games have selections
                 let hasErrors = false;
                 games.forEach(game => {
                     const matchup = game.querySelector('.matchup');
@@ -625,16 +438,12 @@
 
                 if (hasErrors) {
                     validationMessage.classList.remove('d-none');
-                    // Scroll to first error
                     const firstError = document.querySelector('.bracket-game.error');
                     if (firstError) {
                         firstError.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
                     }
-                } else {
-                    // Show confirmation
-                    if (confirm('Are you sure you want to submit your bracket? You cannot change it after submission.')) {
-                        form.submit();
-                    }
+                } else if (confirm('Are you sure you want to submit your bracket? You cannot change it after submission.')) {
+                    form.submit();
                 }
             });
         });

@@ -1,73 +1,59 @@
 ﻿@model GameCardModel
-<div class="game-card round-@Model.Round"
-     data-game-id="@Model.Id"
-     data-bracket-position="@Model.BracketPositionId"
-     data-victor-position="@Model.VictorBracketPositionId">
 
-        <!-- First Round - Show actual teams -->
-        <div class="matchup">
-            <div class="btn-group-vertical team-btns" role="group" aria-label="Basic radio toggle button group">
-                <input type="radio"
-                       class="btn-check team-btn"
-                       name="GamePicks[@Model.Id]"
-                       value="@Model.Team1?.Id"
-                       id="game_@(Model.Id)_team1"
-                       data-game-id="@Model.Id"
-                       autocomplete="off">
-                <label for="game_@(Model.Id)_team1" class="team-label">
-                    @if (!string.IsNullOrEmpty(Model.Team1?.LogoUrl))
-                    {
-                        <img src="https://ncaa.com@Model.Team1.LogoUrl" alt="@Model.Team1.NameShort" class="team-logo" onerror="this.style.display='none'" />
-                    }
-                    <span class="team-info">
-                        <span class="seed">@Model.Team1?.Seed</span>
-                        <span class="team-name">@Model.Team1?.NameShort</span>
-                    </span>
-                </label>
+<div class="bracket-game" data-game-id="@Model.Id" data-bracket-position="@Model.BracketPositionId" data-victor-position="@Model.VictorBracketPositionId" data-round="@Model.Round">
+    <div class="matchup card @(Model.Team1 is null || Model.Team2 is null ? "tbd" : string.Empty)">
+        <div class="card-body p-0">
+            <div class="team-option form-check m-0 px-3 py-2 border-bottom @(Model.Team1 is null ? "placeholder" : string.Empty)"
+                 data-team-id="@Model.Team1?.Id"
+                 data-team-name="@Model.Team1?.NameShort"
+                 data-team-seed="@Model.Team1?.Seed"
+                 data-team-logo="@Model.Team1?.LogoUrl"
+                 data-slot="1">
+                @if (Model.Team1 is null)
+                {
+                    <span class="small text-muted fst-italic">TBD</span>
+                }
+                else
+                {
+                    <input class="form-check-input team-radio" type="radio" name="GamePicks[@Model.Id]" value="@Model.Team1.Id" id="game_@(Model.Id)_team1" data-game-id="@Model.Id" autocomplete="off" />
+                    <label for="game_@(Model.Id)_team1" class="form-check-label w-100 ms-2">
+                        <span class="d-flex align-items-center gap-2">
+                            @if (!string.IsNullOrEmpty(Model.Team1.LogoUrl))
+                            {
+                                <img src="https://ncaa.com@Model.Team1.LogoUrl" alt="@Model.Team1.NameShort" class="team-logo" onerror="this.style.display='none'" />
+                            }
+                            <span class="text-muted">@Model.Team1.Seed</span>
+                            <span>@Model.Team1.NameShort</span>
+                        </span>
+                    </label>
+                }
+            </div>
 
-                <input type="radio"
-                   class="btn-check team-btn"
-                       name="GamePicks[@Model.Id]"
-                       value="@Model.Team2?.Id"
-                       id="game_@(Model.Id)_team2"
-                       data-game-id="@Model.Id"
-                       autocomplete="off">
-                <label for="game_@(Model.Id)_team2" class="team-label">
-                    @if (!string.IsNullOrEmpty(Model.Team2?.LogoUrl))
-                    {
-                        <img src="https://ncaa.com@Model.Team2.LogoUrl" alt="@Model.Team2.NameShort" class="team-logo" onerror="this.style.display='none'" />
-                    }
-                    <span class="team-info">
-                        <span class="seed">@Model.Team2?.Seed</span>
-                        <span class="team-name">@Model.Team2?.NameShort</span>
-                    </span>
-                </label>
+            <div class="team-option form-check m-0 px-3 py-2 @(Model.Team2 is null ? "placeholder" : string.Empty)"
+                 data-team-id="@Model.Team2?.Id"
+                 data-team-name="@Model.Team2?.NameShort"
+                 data-team-seed="@Model.Team2?.Seed"
+                 data-team-logo="@Model.Team2?.LogoUrl"
+                 data-slot="2">
+                @if (Model.Team2 is null)
+                {
+                    <span class="small text-muted fst-italic">TBD</span>
+                }
+                else
+                {
+                    <input class="form-check-input team-radio" type="radio" name="GamePicks[@Model.Id]" value="@Model.Team2.Id" id="game_@(Model.Id)_team2" data-game-id="@Model.Id" autocomplete="off" />
+                    <label for="game_@(Model.Id)_team2" class="form-check-label w-100 ms-2">
+                        <span class="d-flex align-items-center gap-2">
+                            @if (!string.IsNullOrEmpty(Model.Team2.LogoUrl))
+                            {
+                                <img src="https://ncaa.com@Model.Team2.LogoUrl" alt="@Model.Team2.NameShort" class="team-logo" onerror="this.style.display='none'" />
+                            }
+                            <span class="text-muted">@Model.Team2.Seed</span>
+                            <span>@Model.Team2.NameShort</span>
+                        </span>
+                    </label>
+                }
             </div>
         </div>
-
+    </div>
 </div>
-
-<style>
-
-    .round-2 {
-        --round-spacing: 2rem;
-    }
-
-    .round-3 {
-        --round-spacing: 7rem;
-    }
-
-    .round-4 {
-        --round-spacing: 10rem;
-    }
-
-    .round-5 {
-        --round-spacing: 4rem;
-    }
-
-    .game-card {
-        margin-top: var(--round-spacing);
-        margin-bottom: var(--round-spacing);
-    }
-
-    </style>
