@@ -15,3 +15,16 @@ package-lock.json
 # Local notes
 NAME_VERIFICATION_FEATURE.md
 PROJECT_COMPLETE.md
+
+# Visual Studio workspace files
+.vs/
+
+# ASP.NET and other artifacts
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Rider
+.idea/
+
