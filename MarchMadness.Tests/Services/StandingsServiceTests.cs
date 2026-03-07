@@ -35,7 +35,7 @@ public class StandingsServiceTests
     {
         // Arrange
         using var context = GetInMemoryContext();
-        var user = new User { Id = 1, Name = "Test User", WindowsUsername = "testuser" };
+        var user = new User { Id = 1, Name = "Test User"};
         context.Users.Add(user);
 
         var bracket = new Bracket
@@ -108,7 +108,7 @@ public class StandingsServiceTests
     {
         // Arrange
         using var context = GetInMemoryContext();
-        var user = new User { Id = 1, Name = "Test User", WindowsUsername = "testuser" };
+        var user = new User { Id = 1, Name = "Test User"};
         context.Users.Add(user);
 
         var bracket = new Bracket
@@ -168,7 +168,7 @@ public class StandingsServiceTests
     {
         // Arrange
         using var context = GetInMemoryContext();
-        var user = new User { Id = 1, Name = "Test User", WindowsUsername = "testuser" };
+        var user = new User { Id = 1, Name = "Test User" };
         context.Users.Add(user);
 
         var bracket = new Bracket
@@ -220,8 +220,8 @@ public class StandingsServiceTests
         // Arrange
         using var context = GetInMemoryContext();
         
-        var user1 = new User { Id = 1, Name = "User 1", WindowsUsername = "user1" };
-        var user2 = new User { Id = 2, Name = "User 2", WindowsUsername = "user2" };
+        var user1 = new User { Id = 1, Name = "User 1" };
+        var user2 = new User { Id = 2, Name = "User 2" };
         context.Users.AddRange(user1, user2);
 
         var bracket1 = new Bracket { Id = 1, UserId = 1, BracketName = "Bracket 1", Sport = "basketball-men", Year = 2025, SubmittedDate = DateTime.UtcNow };

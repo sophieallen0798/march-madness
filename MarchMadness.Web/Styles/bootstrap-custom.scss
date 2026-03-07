@@ -1,4 +1,4 @@
-﻿// =============================================
+// =============================================
 // Bootstrap Variable Overrides
 // Set these BEFORE importing Bootstrap so they
 // compile into the generated CSS correctly.
@@ -14,7 +14,7 @@ $accent:    #E59153; // custom variable (not a Bootstrap var)
 // =============================================
 // Import Bootstrap (uses the variables above)
 // =============================================
-@import "../../node_modules/bootstrap/scss/bootstrap";
+@import "../node_modules/bootstrap/scss/bootstrap";
 
 // =============================================
 // Custom / Layout Styles

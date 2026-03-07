@@ -1,28 +1,36 @@
 using Microsoft.AspNetCore.Authentication.Negotiate;
 using Microsoft.EntityFrameworkCore;
 using MarchMadness.Web.Data;
+using MarchMadness.Web.Models;
 using MarchMadness.Web.Services;
+
+// Npgsql 6+: opt in to the legacy timestamp behavior so DateTime values stored as
+// "timestamp with time zone" are treated as UTC without requiring DateTimeOffset throughout.
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddDbContext<MarchMadnessContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Register HTTP client and API services
 builder.Services.AddHttpClient<NcaaApiClient>();
 builder.Services.AddScoped<BracketSyncService>();
 builder.Services.AddScoped<StandingsService>();
 
+// Use Windows negotiate authentication (original behavior)
 builder.Services.AddAuthentication(NegotiateDefaults.AuthenticationScheme)
-   .AddNegotiate();
+    .AddNegotiate();
 
 builder.Services.AddAuthorization(options =>
 {
-    // By default, all incoming requests will be authorized according to the default policy.
-    options.FallbackPolicy = options.DefaultPolicy;
-    
-    // Add admin policy
+    // By default, require authenticated users
+    options.FallbackPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
+
+    // Admin policy: match against Windows username (original behavior)
     options.AddPolicy("AdminOnly", policy =>
     {
         var adminUsers = builder.Configuration.GetSection("AdminUsers").Get<string[]>() ?? Array.Empty<string>();
@@ -46,8 +54,8 @@ using (var scope = app.Services.CreateScope())
     
     try
     {
-        db.Database.EnsureCreated();
-        logger.LogInformation("Database initialized");
+        db.Database.Migrate();
+        logger.LogInformation("Database migrated/initialized");
 
         // Sync bracket data from API on startup
         var syncService = scope.ServiceProvider.GetRequiredService<BracketSyncService>();
@@ -79,7 +87,29 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
+// Ensure authentication runs before authorization
+app.UseAuthentication();
 app.UseAuthorization();
+
+// Minimal API: create or return current user tied to Supabase JWT sub
+app.MapPost("/api/users", async (HttpContext http, MarchMadnessContext db) =>
+{
+    var sub = http.User.FindFirst("sub")?.Value;
+    if (string.IsNullOrEmpty(sub))
+        return Results.Unauthorized();
+
+    var name = http.User.Identity?.Name ?? http.User.FindFirst("email")?.Value ?? "Supabase User";
+
+    var user = await db.Users.FirstOrDefaultAsync(u => u.AuthUserId == sub);
+    if (user == null)
+    {
+        user = new User { Name = name, AuthUserId = sub };
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
+    }
+
+    return Results.Ok(new { id = user.Id, name = user.Name });
+}).RequireAuthorization();
 
 app.MapRazorPages();
 

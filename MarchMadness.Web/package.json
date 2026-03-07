@@ -1,0 +1,12 @@
+{
+  "devDependencies": {
+    "sass": "^1.97.3"
+  },
+  "scripts": {
+    "build:sass": "sass scss/bootstrap-custom.scss wwwroot/css/bootstrap-custom.css --no-source-map",
+    "watch:sass": "sass --watch scss:./wwwroot/css --no-source-map"
+  },
+  "dependencies": {
+    "bootstrap": "^5.3.8"
+  }
+}

@@ -1,5 +1,6 @@
 ﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
@@ -15,17 +16,17 @@ namespace MarchMadness.Web.Migrations
                 name: "Teams",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    Name = table.Column<string>(type: "TEXT", nullable: false),
-                    SeoName = table.Column<string>(type: "TEXT", nullable: false),
-                    NameFull = table.Column<string>(type: "TEXT", nullable: false),
-                    NameShort = table.Column<string>(type: "TEXT", nullable: false),
-                    Seed = table.Column<int>(type: "INTEGER", nullable: false),
-                    LogoUrl = table.Column<string>(type: "TEXT", nullable: false),
-                    Region = table.Column<string>(type: "TEXT", nullable: false),
-                    Sport = table.Column<string>(type: "TEXT", nullable: false),
-                    Year = table.Column<int>(type: "INTEGER", nullable: false)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Name = table.Column<string>(type: "text", nullable: false),
+                    SeoName = table.Column<string>(type: "text", nullable: false),
+                    NameFull = table.Column<string>(type: "text", nullable: false),
+                    NameShort = table.Column<string>(type: "text", nullable: false),
+                    Seed = table.Column<int>(type: "integer", nullable: false),
+                    LogoUrl = table.Column<string>(type: "text", nullable: false),
+                    Region = table.Column<string>(type: "text", nullable: false),
+                    Sport = table.Column<string>(type: "text", nullable: false),
+                    Year = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -36,11 +37,10 @@ namespace MarchMadness.Web.Migrations
                 name: "Users",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    Name = table.Column<string>(type: "TEXT", nullable: false),
-                    WindowsUsername = table.Column<string>(type: "TEXT", nullable: true),
-                    CreatedDate = table.Column<DateTime>(type: "TEXT", nullable: false)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Name = table.Column<string>(type: "text", nullable: false),
+                    CreatedDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -51,23 +51,25 @@ namespace MarchMadness.Web.Migrations
                 name: "Games",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    ContestId = table.Column<int>(type: "INTEGER", nullable: false),
-                    BracketPositionId = table.Column<int>(type: "INTEGER", nullable: false),
-                    Round = table.Column<int>(type: "INTEGER", nullable: false),
-                    Region = table.Column<string>(type: "TEXT", nullable: false),
-                    Sport = table.Column<string>(type: "TEXT", nullable: false),
-                    Year = table.Column<int>(type: "INTEGER", nullable: false),
-                    Team1Id = table.Column<int>(type: "INTEGER", nullable: true),
-                    Team2Id = table.Column<int>(type: "INTEGER", nullable: true),
-                    WinnerId = table.Column<int>(type: "INTEGER", nullable: true),
-                    GameState = table.Column<string>(type: "TEXT", nullable: false),
-                    CurrentPeriod = table.Column<string>(type: "TEXT", nullable: false),
-                    StartTime = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    Title = table.Column<string>(type: "TEXT", nullable: false),
-                    Team1Score = table.Column<int>(type: "INTEGER", nullable: true),
-                    Team2Score = table.Column<int>(type: "INTEGER", nullable: true)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    ContestId = table.Column<int>(type: "integer", nullable: false),
+                    BracketPositionId = table.Column<int>(type: "integer", nullable: false),
+                    BracketId = table.Column<int>(type: "integer", nullable: false),
+                    VictorBracketPositionId = table.Column<int>(type: "integer", nullable: true),
+                    Round = table.Column<int>(type: "integer", nullable: false),
+                    Region = table.Column<string>(type: "text", nullable: false),
+                    Sport = table.Column<string>(type: "text", nullable: false),
+                    Year = table.Column<int>(type: "integer", nullable: false),
+                    Team1Id = table.Column<int>(type: "integer", nullable: true),
+                    Team2Id = table.Column<int>(type: "integer", nullable: true),
+                    WinnerId = table.Column<int>(type: "integer", nullable: true),
+                    GameState = table.Column<string>(type: "text", nullable: false),
+                    CurrentPeriod = table.Column<string>(type: "text", nullable: false),
+                    StartTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    Title = table.Column<string>(type: "text", nullable: false),
+                    Team1Score = table.Column<int>(type: "integer", nullable: true),
+                    Team2Score = table.Column<int>(type: "integer", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -96,14 +98,14 @@ namespace MarchMadness.Web.Migrations
                 name: "Brackets",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    UserId = table.Column<int>(type: "INTEGER", nullable: false),
-                    Sport = table.Column<string>(type: "TEXT", nullable: false),
-                    Year = table.Column<int>(type: "INTEGER", nullable: false),
-                    BracketName = table.Column<string>(type: "TEXT", nullable: false),
-                    SubmittedDate = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    TotalPoints = table.Column<int>(type: "INTEGER", nullable: false)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    UserId = table.Column<int>(type: "integer", nullable: false),
+                    Sport = table.Column<string>(type: "text", nullable: false),
+                    Year = table.Column<int>(type: "integer", nullable: false),
+                    BracketName = table.Column<string>(type: "text", nullable: false),
+                    SubmittedDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    TotalPoints = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -120,11 +122,11 @@ namespace MarchMadness.Web.Migrations
                 name: "Picks",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    BracketId = table.Column<int>(type: "INTEGER", nullable: false),
-                    GameId = table.Column<int>(type: "INTEGER", nullable: false),
-                    PickedTeamId = table.Column<int>(type: "INTEGER", nullable: false)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    BracketId = table.Column<int>(type: "integer", nullable: false),
+                    GameId = table.Column<int>(type: "integer", nullable: false),
+                    PickedTeamId = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
                 {

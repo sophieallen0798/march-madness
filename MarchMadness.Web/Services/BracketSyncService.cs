@@ -125,7 +125,7 @@ namespace MarchMadness.Web.Services
                     // Set start time if available
                     if (apiGame.StartTimeEpoch.HasValue)
                     {
-                        game.StartTime = DateTimeOffset.FromUnixTimeSeconds(apiGame.StartTimeEpoch.Value).DateTime;
+                        game.StartTime = DateTimeOffset.FromUnixTimeSeconds(apiGame.StartTimeEpoch.Value).UtcDateTime;
                     }
 
                     // Link teams

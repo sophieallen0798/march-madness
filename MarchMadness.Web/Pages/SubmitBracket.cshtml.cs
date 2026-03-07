@@ -111,8 +111,7 @@ namespace MarchMadness.Web.Pages
             // Create user (name was already verified as available)
             var user = new User
             {
-                Name = UserName,
-                WindowsUsername = User.Identity?.Name
+                Name = UserName
             };
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
@@ -124,7 +123,7 @@ namespace MarchMadness.Web.Pages
                 Sport = Sport,
                 Year = 2025,
                 BracketName = string.IsNullOrWhiteSpace(BracketName) ? $"{UserName}'s {(Sport == "basketball-men" ? "Men's" : "Women's")} Bracket" : BracketName,
-                SubmittedDate = DateTime.Now
+                SubmittedDate = DateTime.UtcNow
             };
             _context.Brackets.Add(newBracket);
             await _context.SaveChangesAsync();

@@ -36,18 +36,28 @@ namespace MarchMadness.Web.Pages
             }
             else
             {
-                // Try to find bracket via Windows authentication
-                var windowsUser = User.Identity?.Name;
-                if (!string.IsNullOrEmpty(windowsUser))
+                // Try to find bracket via Supabase JWT (AuthUserId stored in users.auth_user_id)
+                var authUserId = User.FindFirst("sub")?.Value;
+                if (!string.IsNullOrEmpty(authUserId))
                 {
                     var user = await _context.Users
-                        .FirstOrDefaultAsync(u => u.WindowsUsername == windowsUser);
-                    if (user != null)
+                        .FirstOrDefaultAsync(u => u.AuthUserId == authUserId);
+
+                    if (user == null)
                     {
-                        UserBracket = await _context.Brackets
-                            .Include(b => b.User)
-                            .FirstOrDefaultAsync(b => b.UserId == user.Id && b.Sport == sport && b.Year == 2025);
+                        // Create a user record for this authenticated user
+                        user = new User
+                        {
+                            Name = User.Identity?.Name ?? "Supabase User",
+                            AuthUserId = authUserId
+                        };
+                        _context.Users.Add(user);
+                        await _context.SaveChangesAsync();
                     }
+
+                    UserBracket = await _context.Brackets
+                        .Include(b => b.User)
+                        .FirstOrDefaultAsync(b => b.UserId == user.Id && b.Sport == sport && b.Year == 2025);
                 }
             }
 

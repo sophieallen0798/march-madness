@@ -1,0 +1,7 @@
+<Project>
+  <!-- Exclude SQL migration files from all projects to avoid MSBuild parsing errors during dotnet build -->
+  <ItemGroup>
+    <Content Remove="**\*.sql" />
+    <None Remove="**\*.sql" />
+  </ItemGroup>
+</Project>
