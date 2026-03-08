@@ -122,7 +122,7 @@ namespace MarchMadness.Web.Models.Api
         public string Abbreviation { get; set; } = string.Empty;
 
         [JsonPropertyName("title")]
-        public string Title { get; set; }
+        public string Title { get; set; } = string.Empty;
 
         [JsonPropertyName("regionCode")]
         public string RegionCode { get; set; } = string.Empty;

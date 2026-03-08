@@ -1,6 +1,7 @@
 @page
 @using MarchMadness.Web.Pages.Shared
 @model MarchMadness.Web.Pages.SubmitBracketModel
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
 @{
     ViewData["Title"] = $"Submit {(Model.Sport == "basketball-men" ? "Men's" : "Women's")} Bracket";
     ViewData["FullWidth"] = true;
@@ -13,6 +14,23 @@
             <a href="?sport=basketball-men" class="btn @(Model.Sport == "basketball-men" ? "btn-primary" : "btn-outline-primary")">Men's</a>
             <a href="?sport=basketball-women" class="btn @(Model.Sport == "basketball-women" ? "btn-info" : "btn-outline-info")">Women's</a>
         </div>
+            @{
+                var adminUsers = Configuration.GetSection("AdminUsers").Get<string[]>() ?? Array.Empty<string>();
+                var userSub = User?.FindFirst("sub")?.Value;
+                var userEmail = User?.FindFirst("email")?.Value;
+                var isAdmin = (userSub != null && adminUsers.Contains(userSub, System.StringComparer.OrdinalIgnoreCase))
+                              || (userEmail != null && adminUsers.Contains(userEmail, System.StringComparer.OrdinalIgnoreCase));
+            }
+            @if (isAdmin)
+            {
+                <div class="ms-2">
+                    <button type="button" id="refreshApiBtn" class="btn btn-outline-secondary btn-sm" title="Pull latest game results from API">
+                        <span id="refreshSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                        <span id="refreshBtnText">Refresh Scores</span>
+                    </button>
+                    <small id="lastUpdated" class="ms-2 text-muted">Last updated: —</small>
+                </div>
+            }
     </div>
 
     @if (!string.IsNullOrEmpty(Model.ErrorMessage))
@@ -411,6 +429,121 @@
                 }
 
             });
+
+            // ── Admin: refresh scores from API ──
+            const refreshApiBtn = document.getElementById('refreshApiBtn');
+            const refreshSpinner = document.getElementById('refreshSpinner');
+            const refreshBtnText = document.getElementById('refreshBtnText');
+            const lastUpdatedEl = document.getElementById('lastUpdated');
+
+            let lastUpdatedTime = null; // Date object
+            let cooldownInterval = null;
+
+            function setCooldownState(remainingSeconds) {
+                if (!refreshApiBtn) return;
+                if (remainingSeconds > 0) {
+                    refreshApiBtn.disabled = true;
+                    refreshBtnText.textContent = `Refresh (${Math.ceil(remainingSeconds)}s)`;
+                } else {
+                    refreshApiBtn.disabled = false;
+                    refreshBtnText.textContent = 'Refresh Scores';
+                    if (cooldownInterval) { clearInterval(cooldownInterval); cooldownInterval = null; }
+                }
+            }
+
+            async function fetchLastUpdated() {
+                if (!lastUpdatedEl) return;
+                try {
+                    const resp = await fetch(`/api/sync/lastupdated/${encodeURIComponent('@Model.Sport')}`);
+                    if (resp.status === 204) {
+                        lastUpdatedEl.textContent = 'Last updated: never';
+                        lastUpdatedTime = null;
+                        setCooldownState(0);
+                        return;
+                    }
+
+                    if (!resp.ok) {
+                        lastUpdatedEl.textContent = 'Last updated: unknown';
+                        return;
+                    }
+
+                    const json = await resp.json();
+                    if (json && json.lastUpdatedUtc) {
+                        lastUpdatedTime = new Date(json.lastUpdatedUtc);
+                        lastUpdatedEl.textContent = 'Last updated: ' + lastUpdatedTime.toLocaleString();
+
+                        const secondsSince = (Date.now() - lastUpdatedTime.getTime()) / 1000;
+                        if (secondsSince < 60) {
+                            setCooldownState(60 - secondsSince);
+                            cooldownInterval = setInterval(() => {
+                                const sec = (Date.now() - lastUpdatedTime.getTime()) / 1000;
+                                const remaining = 60 - sec;
+                                if (remaining <= 0) setCooldownState(0);
+                                else setCooldownState(remaining);
+                            }, 1000);
+                        } else {
+                            setCooldownState(0);
+                        }
+                    }
+                } catch (ex) {
+                    lastUpdatedEl.textContent = 'Last updated: error';
+                }
+            }
+
+            if (refreshApiBtn) {
+                // populate initial state
+                fetchLastUpdated();
+
+                refreshApiBtn.addEventListener('click', async function(e) {
+                    e.preventDefault();
+
+                    // enforce 1-minute rule client-side
+                    if (lastUpdatedTime) {
+                        const secondsSince = (Date.now() - lastUpdatedTime.getTime()) / 1000;
+                        if (secondsSince < 60) {
+                            alert('Please wait ' + Math.ceil(60 - secondsSince) + ' seconds before refreshing again.');
+                            return;
+                        }
+                    }
+
+                    if (!confirm('Pull latest game results from the API now?')) return;
+
+                    refreshApiBtn.disabled = true;
+                    refreshSpinner.classList.remove('d-none');
+                    refreshBtnText.textContent = 'Refreshing...';
+
+                    try {
+                        // Attempt to find an antiforgery token on the page
+                        const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+                        const token = tokenInput ? tokenInput.value : '';
+                        const sport = encodeURIComponent('@Model.Sport');
+                        const url = `/Admin/Sync?handler=UpdateScores&sport=${sport}`;
+
+                        const resp = await fetch(url, {
+                            method: 'POST',
+                            headers: token ? { 'RequestVerificationToken': token } : {},
+                            credentials: 'same-origin'
+                        });
+
+                        if (resp.ok) {
+                            // update last-updated from tracker endpoint
+                            await fetchLastUpdated();
+                            alert('Scores updated successfully.');
+                        } else if (resp.status === 403) {
+                            alert('Not authorized to refresh scores.');
+                        } else {
+                            const text = await resp.text();
+                            alert('Refresh failed: ' + resp.status + '\n' + text.substring(0, 200));
+                        }
+                    } catch (ex) {
+                        alert('Error refreshing scores: ' + ex.message);
+                    } finally {
+                        refreshSpinner.classList.add('d-none');
+                        // allow fetchLastUpdated to set proper cooldown state
+                        await fetchLastUpdated();
+                    }
+                });
+            }
 
             // ── Submit validation ──
             submitBtn.addEventListener('click', function(e) {

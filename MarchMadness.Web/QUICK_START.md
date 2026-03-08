@@ -33,7 +33,7 @@ Your app has been completely refactored to use the NCAA API instead of manual en
    The app will automatically try to sync bracket data on startup from the NCAA API.
 
 2. **Access Admin Panel**:
-   - Log in (Windows Auth as EVR\sallen)
+   - Authenticate using Supabase (send Bearer token)
    - Click "Admin" in the navigation
    - You'll see options to sync Men's and Women's brackets
 

@@ -1,0 +1,49 @@
+# Deploy the docs/ folder to GitHub Pages
+# Triggered on every push to the main branch.
+#
+# GitHub Pages setup required (one-time):
+#   Repository → Settings → Pages → Source: "Deploy from a branch"
+#   Branch: main  |  Folder: /docs
+#
+# No build step is needed – these are plain static files.
+
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+  workflow_dispatch:   # allow manual run from the Actions tab
+
+permissions:
+  contents: read
+  pages:    write
+  id-token: write
+
+concurrency:
+  group:  "pages"
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url:  ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs   # ← the folder containing index.html
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

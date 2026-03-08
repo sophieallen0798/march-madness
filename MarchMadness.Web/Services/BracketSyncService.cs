@@ -10,15 +10,18 @@ namespace MarchMadness.Web.Services
         private readonly MarchMadnessContext _context;
         private readonly NcaaApiClient _apiClient;
         private readonly ILogger<BracketSyncService> _logger;
+        private readonly ScoresUpdateTracker? _tracker;
 
         public BracketSyncService(
             MarchMadnessContext context,
             NcaaApiClient apiClient,
-            ILogger<BracketSyncService> logger)
+            ILogger<BracketSyncService> logger,
+            ScoresUpdateTracker? tracker = null)
         {
             _context = context;
             _apiClient = apiClient;
             _logger = logger;
+            _tracker = tracker;
         }
 
         public async Task SyncBracketDataAsync(string sport, int year = 2025)
@@ -227,6 +230,11 @@ namespace MarchMadness.Web.Services
 
             await _context.SaveChangesAsync();
             _logger.LogInformation("Scores updated for {Sport}", sport);
+            try
+            {
+                _tracker?.SetLastUpdatedUtc(sport, DateTime.UtcNow);
+            }
+            catch { }
         }
 
         private string MapSectionIdToRegion(int sectionId, Championship championship)

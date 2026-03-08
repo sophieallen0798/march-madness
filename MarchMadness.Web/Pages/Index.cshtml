@@ -1,5 +1,6 @@
 ﻿@page
 @model IndexModel
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
 @{
     ViewData["Title"] = "Home page";
 }
@@ -63,8 +64,10 @@
 
     @if (User.Identity?.IsAuthenticated == true)
     {
-        var adminUsers = new[] { "EVR\\sallen", "EVR\\sallen-t1" };
-        if (adminUsers.Contains(User.Identity?.Name, StringComparer.OrdinalIgnoreCase))
+        var adminUsers = Configuration.GetSection("AdminUsers").Get<string[]>() ?? Array.Empty<string>();
+        var sub = User.FindFirst("sub")?.Value;
+        var email = User.FindFirst("email")?.Value;
+        if ((sub != null && adminUsers.Contains(sub, StringComparer.OrdinalIgnoreCase)) || (email != null && adminUsers.Contains(email, StringComparer.OrdinalIgnoreCase)))
         {
             <div class="alert alert-warning mt-5">
                 <h4>Admin Controls</h4>

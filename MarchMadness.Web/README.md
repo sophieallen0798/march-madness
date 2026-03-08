@@ -9,7 +9,7 @@ An ASP.NET Core web application for running March Madness basketball bracket com
 - **Easy Bracket Submission**: Pick winners for each game with a clean, intuitive interface
 - **Live Standings**: Real-time leaderboard showing how your bracket compares to others
 - **Automatic Scoring**: Points are automatically calculated as games complete (1, 2, 4, 8, 16, 32 points per round)
-- **Windows Authentication**: Uses your Windows credentials for seamless login
+- **Authentication**: Uses Supabase JWT for authentication (see `appsettings.json` for admin configuration)
 
 ### For Administrators
 - **API Integration**: Automatically syncs tournament data from NCAA API
@@ -20,7 +20,7 @@ An ASP.NET Core web application for running March Madness basketball bracket com
 
 - **Framework**: ASP.NET Core 8.0 (Razor Pages)
 - **Database**: SQLite (no separate SQL Server required)
-- **Authentication**: Windows Authentication (IIS/Active Directory)
+- **Authentication**: Supabase JWT (Bearer tokens)
 - **Data Source**: NCAA API (https://ncaa-api.henrygd.me)
 
 ## Setup Instructions
@@ -37,20 +37,20 @@ An ASP.NET Core web application for running March Madness basketball bracket com
 4. The database will be created automatically on first run
 5. Bracket data will sync automatically from the API on startup
 
-### Production (IIS)
-1. Install ASP.NET Core 8.0 Hosting Bundle on the server
+### Production
+1. Install ASP.NET Core Hosting Bundle on the server
 2. Create an IIS application pool (No Managed Code)
-3. Enable Windows Authentication for the site
-4. Ensure the app pool identity has write access to the application directory (for SQLite database)
-5. Deploy the published application to IIS
+3. Ensure the app pool identity has write access to the application directory (for SQLite database)
+4. Deploy the published application to IIS
 
 ### Admin Configuration
-1. Update `appsettings.json` to add admin usernames:
-   ```json
-   "AdminUsers": [
-     "DOMAIN\\username"
-   ]
-   ```
+1. Update `appsettings.json` to add admin identifiers (Supabase `sub` values or emails):
+    ```json
+    "AdminUsers": [
+       "sophieallen0798@gmail.com",
+       "service-account-sub-guid"
+    ]
+    ```
 2. Admins can access the Admin panel to:
    - Sync bracket data from the API
    - Update game scores

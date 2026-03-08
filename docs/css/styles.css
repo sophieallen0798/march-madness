@@ -1,0 +1,103 @@
+/* March Madness – shared styles */
+
+/* ── Bracket shell ────────────────────────────────────────── */
+.bracket-shell {
+  width: 100%;
+  overflow: hidden;
+}
+.bracket-shell .card-body {
+  overflow: hidden;
+  padding: 0;
+}
+.bracket-scroll {
+  width: 100%;
+  height: 78vh;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.bracket-zoom-surface {
+  transform-origin: top left;
+  display: inline-block;
+}
+.bracket-board-col {
+  min-width: 1200px;
+}
+.bracket-board-col-final {
+  min-width: 720px;
+}
+
+/* ── Region panels ────────────────────────────────────────── */
+.region-panel { border-color: var(--bs-border-color); }
+.region-panel-left,
+.region-panel-right,
+.region-panel-final { background-color: var(--bs-tertiary-bg); }
+
+.region-board,
+.final-round-wrap { min-height: 56rem; }
+.region-board     { position: relative; }
+
+/* ── Round columns ────────────────────────────────────────── */
+.round-games {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  gap: 1.75rem;
+}
+
+/* ── Matchup cards ────────────────────────────────────────── */
+.bracket-game  { margin: 0; }
+.matchup       { min-width: 13rem; }
+.matchup.tbd   { border-style: dashed; }
+.matchup.error { border-color: var(--bs-danger); }
+
+/* ── Team option rows ─────────────────────────────────────── */
+.team-option { min-height: 3.25rem; cursor: pointer; }
+.team-option.placeholder { display: flex; align-items: center; }
+.team-option:hover:not(.placeholder) { background-color: var(--bs-primary-bg-subtle); }
+.team-option.selected { background-color: var(--bs-primary-bg-subtle); font-weight: 600; }
+
+/* Hide the real radio input – selection is shown via .selected class */
+.team-radio {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ── Team logos ───────────────────────────────────────────── */
+.team-logo {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+/* ── Scoring states ───────────────────────────────────────── */
+.pick-correct   { background-color: #d1e7dd !important; }
+.pick-incorrect { background-color: #f8d7da !important; }
+.pick-pending   { background-color: #fff3cd !important; }
+
+/* ── Legend badges ────────────────────────────────────────── */
+.badge-legend {
+  display: inline-block;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 0.25rem;
+  border: 1px solid #ccc;
+}
+.pick-correct-legend   { background-color: #d1e7dd; }
+.pick-incorrect-legend { background-color: #f8d7da; }
+.pick-pending-legend   { background-color: #fff3cd; }
+
+/* ── Responsive breakpoints ───────────────────────────────── */
+@media (max-width: 1400px) {
+  .bracket-board-col       { min-width: 1100px; }
+  .bracket-board-col-final { min-width: 660px;  }
+}
+@media (max-width: 1200px) {
+  .bracket-board-col       { min-width: 1020px; }
+  .bracket-board-col-final { min-width: 620px;  }
+}
+
+/* ── Misc ─────────────────────────────────────────────────── */
+a.navbar-brand { white-space: normal; word-break: break-all; }
+a { color: #0077cc; }
+.btn-primary { color: #fff; background-color: #1b6ec2; border-color: #1861ac; }

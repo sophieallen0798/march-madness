@@ -60,18 +60,35 @@
                                         asp-route-sport="basketball-women">Women's Basketball</a></li>
                             </ul>
                         </li>
+                        @inject Microsoft.Extensions.Configuration.IConfiguration Configuration
                         @if (User.Identity?.IsAuthenticated == true)
                         {
-                        var adminUsers = new[] { "EVR\\sallen", "EVR\\sallen-t1" };
-                        if (adminUsers.Contains(User.Identity?.Name, StringComparer.OrdinalIgnoreCase))
-                        {
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-page="/Admin/Sync">Admin</a>
-                        </li>
-                        }
+                            var adminUsers = Configuration.GetSection("AdminUsers").Get<string[]>() ?? Array.Empty<string>();
+                            var sub = User.FindFirst("sub")?.Value;
+                            var email = User.FindFirst("email")?.Value;
+                            if ((sub != null && adminUsers.Contains(sub, StringComparer.OrdinalIgnoreCase)) || (email != null && adminUsers.Contains(email, StringComparer.OrdinalIgnoreCase)))
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark" asp-area="" asp-page="/Admin/Sync">Admin</a>
+                                </li>
+                            }
                         }
                     </ul>
-                    <p class="nav navbar-text mb-0">Hello, @User.Identity?.Name!</p>
+                    <p class="nav navbar-text mb-0">Hello, @User.FindFirst("email")?.Value ?? User.Identity?.Name</p>
+                    <ul class="navbar-nav ms-3">
+                        @if (User?.Identity?.IsAuthenticated == true)
+                        {
+                            <li class="nav-item">
+                                <form method="post" asp-page="/Account/Logout">
+                                    <button type="submit" class="btn btn-link nav-link">Sign out</button>
+                                </form>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="nav-item"><a class="nav-link" href="/Admin/Login">Sign in</a></li>
+                        }
+                    </ul>
                 </div>
             </div>
         </nav>

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Access – March Madness</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="css/styles.css" />
+    <script>
+        // Already granted access – skip straight to home
+        if (localStorage.getItem("site_access")) location.replace("index.html");
+    </script>
+</head>
+
+<body class="bg-light">
+
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-sm-10 col-md-6 col-lg-5">
+
+                <div class="text-center mb-4">
+                    <h2 class="fw-bold">🏀 March Madness</h2>
+                    <p class="text-muted">Enter the access code to continue.</p>
+                </div>
+
+                <div class="card shadow-sm">
+                    <div class="card-body p-4">
+                        <h5 class="card-title mb-3">Access Required</h5>
+
+                        <div id="errorMsg" class="alert alert-danger d-none"></div>
+
+                        <form id="accessForm">
+                            <div class="mb-3">
+                                <label for="code" class="form-label">Access Code</label>
+                                <input type="text" id="code" class="form-control form-control-lg"
+                                    placeholder="Enter access code" required autofocus autocomplete="off" />
+                            </div>
+                            <div class="d-grid">
+                                <button type="submit" id="accessBtn" class="btn btn-primary btn-lg">Continue</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+    <script src="js/config.js"></script>
+    <script>
+
+        document.getElementById("accessForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const code = document.getElementById("code").value.trim();
+            const btn = document.getElementById("accessBtn");
+            const errorEl = document.getElementById("errorMsg");
+
+            errorEl.classList.add("d-none");
+            btn.disabled = true;
+            btn.textContent = "Checking…";
+
+            try {
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/check-code`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    },
+                    body: JSON.stringify({ code }),
+                });
+
+                const data = await response.json();
+
+                if (data && data.success) {
+                    console.log("Access code valid");
+                    localStorage.setItem("site_access", "true");
+                    window.location.replace("index.html");
+                } else {
+                    console.log("Invalid access code attempt:", code);
+                    errorEl.textContent = "Incorrect access code. Please try again or contact Sophie.";
+                    errorEl.classList.remove("d-none");
+                    btn.disabled = false;
+                    btn.textContent = "Continue";
+                }
+
+            } catch (err) {
+                console.error("Error validating access code:", err);
+                errorEl.textContent = "Unable to verify code. Please try again or contact Sophie.";
+                errorEl.classList.remove("d-none");
+                btn.disabled = false;
+                btn.textContent = "Continue";
+            }
+        });
+    </script>
+</body>
+
+</html>

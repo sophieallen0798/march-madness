@@ -1,0 +1,552 @@
+// bracket-render.js
+// Shared bracket rendering and interaction logic.
+// Used by both submit-bracket.html (editable) and my-bracket.html (scoring/read-only).
+
+// ────────────────────────────────────────────────────────────────
+// DATA LOADING
+// ────────────────────────────────────────────────────────────────
+
+/**
+ * Fetches all games and teams for a given sport/year from Supabase.
+ * Returns { games, teams, teamById }.
+ */
+async function loadBracketData(sport, year = TOURNAMENT_YEAR) {
+  const [gamesResp, teamsResp] = await Promise.all([
+    supabase
+      .from("games")
+      .select("*")
+      .eq("sport", sport)
+      .eq("year", year)
+      .gte("round", 2)      // exclude First Four (round 1) from bracket display
+      .order("round")
+      .order("bracket_position_id"),
+    supabase
+      .from("teams")
+      .select("*")
+      .eq("sport", sport)
+      .eq("year", year),
+  ]);
+
+  if (gamesResp.error) throw new Error(gamesResp.error.message);
+  if (teamsResp.error) throw new Error(teamsResp.error.message);
+
+  const teams = teamsResp.data ?? [];
+  const teamById = new Map(teams.map((t) => [t.id, t]));
+  const games = (gamesResp.data ?? []).map((g) => ({
+    ...g,
+    team1: g.team1_id ? teamById.get(g.team1_id) ?? null : null,
+    team2: g.team2_id ? teamById.get(g.team2_id) ?? null : null,
+    winner: g.winner_id ? teamById.get(g.winner_id) ?? null : null,
+  }));
+
+  return { games, teams, teamById };
+}
+
+// ────────────────────────────────────────────────────────────────
+// BRACKET LAYOUT REGIONS
+// ────────────────────────────────────────────────────────────────
+
+const FINAL_REGIONS = ["final", "finals", "region6"];
+
+function isFinalGame(game) {
+  return FINAL_REGIONS.includes((game.region ?? "").toLowerCase());
+}
+
+const LEFT_REGIONS  = ["south", "west"];
+const RIGHT_REGIONS = ["east", "midwest"];
+
+// Rounds displayed left→right for left panels, right→left for right panels
+const LEFT_ROUND_ORDER  = [2, 3, 4, 5];
+const RIGHT_ROUND_ORDER = [5, 4, 3, 2];
+const FINAL_POSITION_ORDER = [601, 701, 602]; // Final Four + Championship order
+
+// ────────────────────────────────────────────────────────────────
+// TEAM CARD HTML
+// ────────────────────────────────────────────────────────────────
+
+function logoHtml(team) {
+  if (!team?.logo_url) return "";
+  return `<img src="https://ncaa.com${team.logo_url}" alt="${team.name_short}" class="team-logo" onerror="this.style.display='none'" />`;
+}
+
+/**
+ * Renders a single team row used by the editable (submit) bracket.
+ * slot: 1 or 2.
+ */
+function editableTeamRowHtml(gameId, team, slot) {
+  if (!team) {
+    return `<div class="team-option placeholder px-3 py-2 border-bottom" data-game-id="${gameId}" data-slot="${slot}">
+              <span class="small text-muted fst-italic">TBD</span>
+            </div>`;
+  }
+  const borderClass = slot === 1 ? "border-bottom" : "";
+  return `
+    <div class="team-option ${borderClass} form-check m-0 px-3 py-2"
+         data-game-id="${gameId}"
+         data-slot="${slot}"
+         data-team-id="${team.id}"
+         data-team-name="${team.name_short}"
+         data-team-seed="${team.seed}"
+         data-team-logo="${team.logo_url ?? ''}">
+      <input class="form-check-input team-radio"
+             type="radio"
+             name="pick_${gameId}"
+             value="${team.id}"
+             id="g${gameId}_s${slot}"
+             autocomplete="off" />
+      <label for="g${gameId}_s${slot}" class="form-check-label w-100 ms-2" style="cursor:pointer;">
+        <span class="d-flex align-items-center gap-2">
+          ${logoHtml(team)}
+          <span class="text-muted small">${team.seed}</span>
+          <span>${team.name_short}</span>
+        </span>
+      </label>
+    </div>`;
+}
+
+/**
+ * Renders a single team row used by the scoring (read-only) bracket.
+ * pickedTeamId: the team the user picked for this game.
+ * actualWinnerId: the confirmed winner (or null).
+ */
+function scoringTeamRowHtml(team, slot, pickedTeamId, actualWinnerId) {
+  const isLast   = slot === 2;
+  const border   = isLast ? "" : "border-bottom";
+
+  if (!team) {
+    return `<div class="team-option-scoring d-flex align-items-center px-3 py-2 ${border}">
+              <span class="small text-muted fst-italic">TBD</span>
+            </div>`;
+  }
+
+  const isPicked = pickedTeamId === team.id;
+  let pickClass  = "";
+  if (isPicked) {
+    if (actualWinnerId === null || actualWinnerId === undefined) {
+      pickClass = "pick-pending";
+    } else {
+      pickClass = pickedTeamId === actualWinnerId ? "pick-correct" : "pick-incorrect";
+    }
+  }
+
+  const checkmark = isPicked ? `<span class="ms-auto badge bg-secondary">&#10003;</span>` : "";
+  const bold      = isPicked ? "fw-bold" : "";
+
+  return `
+    <div class="team-option-scoring d-flex align-items-center px-3 py-2 ${border} ${pickClass}">
+      <span class="d-flex align-items-center gap-2 w-100">
+        ${logoHtml(team)}
+        <span class="text-muted small">${team.seed}</span>
+        <span class="${bold}">${team.name_short}</span>
+        ${checkmark}
+      </span>
+    </div>`;
+}
+
+// ────────────────────────────────────────────────────────────────
+// RENDER A SINGLE GAME CARD
+// ────────────────────────────────────────────────────────────────
+
+function editableGameCardHtml(game) {
+  const { id, bracket_position_id, victor_bracket_position_id, round, team1, team2 } = game;
+  const tbdClass = (!team1 || !team2) ? "tbd" : "";
+  return `
+    <div class="bracket-game"
+         data-game-id="${id}"
+         data-bracket-position="${bracket_position_id}"
+         data-victor-position="${victor_bracket_position_id ?? ''}"
+         data-round="${round}">
+      <div class="matchup card ${tbdClass}">
+        <div class="card-body p-0">
+          ${editableTeamRowHtml(id, team1, 1)}
+          ${editableTeamRowHtml(id, team2, 2)}
+        </div>
+      </div>
+    </div>`;
+}
+
+function scoringGameCardHtml(game, pickedTeamId, startTimeStr) {
+  const { id, bracket_position_id, team1, team2, winner_id, game_state, start_time } = game;
+  const tbdClass = (!team1 && !team2) ? "tbd" : "";
+
+  let statusHtml = "";
+  if (!winner_id && start_time) {
+    const d = new Date(start_time);
+    statusHtml = `<div class="text-center small text-muted py-1 border-top bg-light">${d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</div>`;
+  } else if (!winner_id && (game_state ?? "").toLowerCase() === "live") {
+    statusHtml = `<div class="text-center small fw-bold text-danger py-1 border-top bg-light">LIVE</div>`;
+  }
+
+  return `
+    <div class="bracket-game scoring-game" data-bracket-position="${bracket_position_id}">
+      <div class="matchup card ${tbdClass}">
+        <div class="card-body p-0">
+          ${scoringTeamRowHtml(team1, 1, pickedTeamId, winner_id)}
+          ${scoringTeamRowHtml(team2, 2, pickedTeamId, winner_id)}
+          ${statusHtml}
+        </div>
+      </div>
+    </div>`;
+}
+
+// ────────────────────────────────────────────────────────────────
+// RENDER REGION PANEL
+// ────────────────────────────────────────────────────────────────
+
+function renderRegionPanel(regionName, games, roundOrder, panelClass, renderGameFn) {
+  const roundCols = roundOrder.map((r) => {
+    const regionGames = games
+      .filter((g) => g.round === r)
+      .sort((a, b) => a.bracket_position_id - b.bracket_position_id);
+    const gameCards = regionGames.map(renderGameFn).join("");
+    return `
+      <div class="col d-flex round-col" data-round="${r}">
+        <div class="d-flex flex-column justify-content-around w-100 round-games">
+          ${gameCards}
+        </div>
+      </div>`;
+  }).join("");
+
+  return `
+    <section class="region-panel card shadow-sm ${panelClass}">
+      <div class="card-header py-2 text-center fw-semibold">${regionName}</div>
+      <div class="card-body p-2">
+        <div class="row row-cols-4 g-3 align-items-stretch region-board">
+          ${roundCols}
+        </div>
+      </div>
+    </section>`;
+}
+
+function renderFinalPanel(finalGames, renderGameFn) {
+  const ordered = [...finalGames].sort((a, b) => {
+    const ia = FINAL_POSITION_ORDER.indexOf(a.bracket_position_id);
+    const ib = FINAL_POSITION_ORDER.indexOf(b.bracket_position_id);
+    return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+  });
+
+  // Group by round for column layout: round 6 (x2) and round 7 (x1)
+  const semifinals = ordered.filter((g) => g.round === 6).sort((a, b) => a.bracket_position_id - b.bracket_position_id);
+  const semifinalLeft  = semifinals[0] ?? null;
+  const semifinalRight = semifinals[1] ?? null;
+  const championship   = ordered.find((g) => g.round === 7) ?? null;
+
+  const col = (game) => game
+    ? `<div class="col d-flex"><div class="d-flex flex-column justify-content-around w-100 round-games">${renderGameFn(game)}</div></div>`
+    : `<div class="col"></div>`;
+
+  return `
+    <section class="region-panel card shadow-sm region-panel-final">
+      <div class="card-header py-2 text-center fw-semibold">Final Four &amp; Championship</div>
+      <div class="card-body p-2">
+        <div class="row row-cols-3 g-3 align-items-center final-round-wrap">
+          ${col(semifinalLeft)}
+          ${col(championship)}
+          ${col(semifinalRight)}
+        </div>
+      </div>
+    </section>`;
+}
+
+// ────────────────────────────────────────────────────────────────
+// FULL BRACKET RENDER
+// ────────────────────────────────────────────────────────────────
+
+/**
+ * Renders the complete 3-column bracket board into `container`.
+ *
+ * @param {HTMLElement} container              Target element
+ * @param {Array}       games                  Enriched game objects (with team1/team2)
+ * @param {string}      mode                   "editable" | "scoring"
+ * @param {Map}         picksMap               Map<gameId, pickedTeamId> (only for scoring mode)
+ */
+function renderBracket(container, games, mode = "editable", picksMap = new Map()) {
+  const isEditable = mode === "editable";
+
+  function renderGame(game) {
+    if (isEditable) return editableGameCardHtml(game);
+    const pickedTeamId = picksMap.get(game.id) ?? null;
+    return scoringGameCardHtml(game, pickedTeamId);
+  }
+
+  const regionGames = (region) =>
+    games.filter((g) => !isFinalGame(g) && (g.region ?? "").toLowerCase() === region.toLowerCase());
+
+  const leftPanels = LEFT_REGIONS
+    .map((r) => renderRegionPanel(capitalize(r), regionGames(r), LEFT_ROUND_ORDER, "region-panel-left", renderGame))
+    .join("");
+
+  const rightPanels = RIGHT_REGIONS
+    .map((r) => renderRegionPanel(capitalize(r), regionGames(r), RIGHT_ROUND_ORDER, "region-panel-right", renderGame))
+    .join("");
+
+  const finalGames = games.filter(isFinalGame);
+  const finalPanel = finalGames.length
+    ? renderFinalPanel(finalGames, renderGame)
+    : `<section class="region-panel card shadow-sm region-panel-final"><div class="card-header py-2 text-center">Final Four</div><div class="card-body"><p class="text-muted">Final Four data not yet available.</p></div></section>`;
+
+  container.innerHTML = `
+    <div class="row row-cols-3 align-items-start flex-nowrap gx-3 bracket-board">
+      <div class="col bracket-board-col">${leftPanels}</div>
+      <div class="col bracket-board-col bracket-board-col-final">${finalPanel}</div>
+      <div class="col bracket-board-col">${rightPanels}</div>
+    </div>`;
+
+  if (isEditable) attachEditableHandlers(container);
+}
+
+function capitalize(s) {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+// ────────────────────────────────────────────────────────────────
+// EDITABLE BRACKET – INTERACTION LOGIC
+// ────────────────────────────────────────────────────────────────
+
+function attachEditableHandlers(container) {
+  // Map bracket_position -> game element
+  const positionMap = new Map();
+  container.querySelectorAll(".bracket-game").forEach((el) => {
+    const pos = parseInt(el.dataset.bracketPosition);
+    if (!isNaN(pos)) positionMap.set(pos, el);
+  });
+
+  function determineTargetSlot(sourcePos, targetPos) {
+    const feeders = [];
+    container.querySelectorAll(".bracket-game").forEach((g) => {
+      const vp  = parseInt(g.dataset.victorPosition);
+      const sp  = parseInt(g.dataset.bracketPosition);
+      if (vp === targetPos) feeders.push(sp);
+    });
+    if (feeders.length === 2) {
+      feeders.sort((a, b) => a - b);
+      return sourcePos === feeders[0] ? 1 : 2;
+    }
+    return sourcePos < targetPos ? 1 : 2;
+  }
+
+  function clearCascading(startPos) {
+    const gameEl = positionMap.get(startPos);
+    if (!gameEl) return;
+    gameEl.querySelectorAll("input[type=radio]").forEach((r) => (r.checked = false));
+    const matchup = gameEl.querySelector(".matchup");
+    if (matchup) {
+      matchup.querySelectorAll(".team-option").forEach((opt) => {
+        opt.classList.add("placeholder");
+        opt.classList.remove("selected");
+        opt.dataset.teamId   = "";
+        opt.dataset.teamName = "";
+        opt.dataset.teamSeed = "";
+        opt.dataset.teamLogo = "";
+        opt.innerHTML = `<span class="small text-muted fst-italic">TBD</span>`;
+      });
+      matchup.classList.add("tbd");
+    }
+    const vp = parseInt(gameEl.dataset.victorPosition);
+    if (vp && positionMap.has(vp)) clearCascading(vp);
+  }
+
+  function propagateWinner(victorPos, sourcePos, team, sourceGameEl) {
+    const nextEl = positionMap.get(victorPos);
+    if (!nextEl) return;
+    const matchup = nextEl.querySelector(".matchup");
+    if (!matchup) return;
+
+    const slot       = determineTargetSlot(sourcePos, victorPos);
+    const teamOpts   = matchup.querySelectorAll(".team-option");
+    const targetOpt  = teamOpts[slot - 1];
+    if (!targetOpt) return;
+
+    const nextGameId = nextEl.dataset.gameId;
+    const border     = slot === 1 ? "border-bottom" : "";
+
+    targetOpt.classList.remove("placeholder", "selected");
+    targetOpt.dataset.teamId   = team.id;
+    targetOpt.dataset.teamName = team.name_short;
+    targetOpt.dataset.teamSeed = team.seed;
+    targetOpt.dataset.teamLogo = team.logo_url ?? "";
+
+    targetOpt.innerHTML = `
+      <input class="form-check-input team-radio" type="radio"
+             name="pick_${nextGameId}" value="${team.id}"
+             id="g${nextGameId}_s${slot}" autocomplete="off" />
+      <label for="g${nextGameId}_s${slot}" class="form-check-label w-100 ms-2" style="cursor:pointer;">
+        <span class="d-flex align-items-center gap-2">
+          ${logoHtml(team)}
+          <span class="text-muted small">${team.seed}</span>
+          <span>${team.name_short}</span>
+        </span>
+      </label>`;
+
+    attachRadioHandler(targetOpt.querySelector(".team-radio"), positionMap, propagateWinner, clearCascading, determineTargetSlot);
+
+    // If both slots filled, remove tbd class
+    const allFilled = [...matchup.querySelectorAll(".team-option")].every((o) => !o.classList.contains("placeholder"));
+    if (allFilled) matchup.classList.remove("tbd");
+
+    // Clear any downstream picks from this game
+    nextEl.querySelectorAll("input[type=radio]").forEach((r) => (r.checked = false));
+    const nextVp = parseInt(nextEl.dataset.victorPosition);
+    if (nextVp && positionMap.has(nextVp)) clearCascading(nextVp);
+  }
+
+  container.querySelectorAll(".team-option:not(.placeholder)").forEach((opt) => {
+    opt.addEventListener("click", function () {
+      const radio = this.querySelector("input[type=radio]");
+      if (radio) { radio.checked = true; radio.dispatchEvent(new Event("change", { bubbles: true })); }
+    });
+  });
+
+  container.querySelectorAll(".team-radio").forEach((radio) => {
+    attachRadioHandler(radio, positionMap, propagateWinner, clearCascading, determineTargetSlot);
+  });
+}
+
+function attachRadioHandler(radio, positionMap, propagateWinner, clearCascading, determineTargetSlot) {
+  if (!radio) return;
+  radio.addEventListener("change", function () {
+    const gameEl    = this.closest(".bracket-game");
+    if (!gameEl) return;
+    const victorPos = parseInt(gameEl.dataset.victorPosition);
+    const sourcePos = parseInt(gameEl.dataset.bracketPosition);
+    const teamId    = parseInt(this.value);
+
+    // Mark selected visually
+    gameEl.querySelectorAll(".team-option").forEach((o) => o.classList.remove("selected"));
+    const parentOpt = this.closest(".team-option");
+    if (parentOpt) parentOpt.classList.add("selected");
+
+    if (victorPos && positionMap.has(victorPos)) {
+      // Build a minimal team descriptor from the option's data attributes
+      const opt  = this.closest(".team-option");
+      const team = {
+        id:         teamId,
+        name_short: opt?.dataset.teamName ?? "",
+        seed:       parseInt(opt?.dataset.teamSeed ?? "0") || 0,
+        logo_url:   opt?.dataset.teamLogo ?? "",
+      };
+      propagateWinner(victorPos, sourcePos, team, gameEl);
+    }
+    gameEl.querySelector(".matchup")?.classList.remove("error");
+  });
+
+  // Also handle click on label/row
+  const opt = radio.closest(".team-option");
+  if (opt) {
+    opt.addEventListener("click", function (e) {
+      if (e.target === radio || e.target.tagName === "LABEL" || e.target.tagName === "INPUT") return;
+      radio.checked = true;
+      radio.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+  }
+}
+
+// ────────────────────────────────────────────────────────────────
+// COLLECT PICKS FROM EDITABLE BRACKET
+// ────────────────────────────────────────────────────────────────
+
+/**
+ * Returns a Map<gameId, pickedTeamId> from checked radios in container.
+ */
+function collectPicks(container) {
+  const picks = new Map();
+  container.querySelectorAll(".bracket-game").forEach((gameEl) => {
+    const gameId = parseInt(gameEl.dataset.gameId);
+    const checked = gameEl.querySelector("input[type=radio]:checked");
+    if (checked) picks.set(gameId, parseInt(checked.value));
+  });
+  return picks;
+}
+
+/**
+ * Highlights games missing a pick. Returns count of invalid games.
+ */
+function validatePicks(container) {
+  let invalid = 0;
+  container.querySelectorAll(".bracket-game").forEach((gameEl) => {
+    const checked = gameEl.querySelector("input[type=radio]:checked");
+    const matchup = gameEl.querySelector(".matchup");
+    // Only validate games where both teams are known (not TBD)
+    const allOpts = [...(matchup?.querySelectorAll(".team-option") ?? [])];
+    const hasBothTeams = allOpts.length === 2 && allOpts.every((o) => !o.classList.contains("placeholder"));
+    if (hasBothTeams && !checked) {
+      matchup?.classList.add("error");
+      invalid++;
+    }
+  });
+  return invalid;
+}
+
+// ────────────────────────────────────────────────────────────────
+// AUTOFILL
+// ────────────────────────────────────────────────────────────────
+
+/**
+ * Randomly fills all un-picked valid games (round by round so propagation works).
+ */
+function autofill(container) {
+  for (let round = 2; round <= 7; round++) {
+    container.querySelectorAll(`.bracket-game[data-round="${round}"]`).forEach((gameEl) => {
+      const alreadyPicked = !!gameEl.querySelector("input[type=radio]:checked");
+      if (alreadyPicked) return;
+      const opts = [...gameEl.querySelectorAll(".team-option:not(.placeholder)")];
+      if (opts.length < 2) return;
+      const chosen = opts[Math.floor(Math.random() * opts.length)];
+      const radio  = chosen.querySelector("input[type=radio]");
+      if (radio) { radio.checked = true; radio.dispatchEvent(new Event("change", { bubbles: true })); }
+    });
+  }
+}
+
+// ────────────────────────────────────────────────────────────────
+// ZOOM CONTROLS
+// ────────────────────────────────────────────────────────────────
+
+function initZoomControls(scrollEl, zoomSurfaceEl, inBtn, outBtn, resetBtn) {
+  if (!scrollEl || !zoomSurfaceEl) return;
+  const board   = zoomSurfaceEl.querySelector(".bracket-board");
+  if (!board) return;
+
+  let zoom     = 1;
+  const STEP   = 0.1;
+  const MAX    = 1.6;
+  const baseW  = Math.max(board.scrollWidth, 1);
+
+  function fitZoom() {
+    return Math.max(0.2, Math.min(1, scrollEl.clientWidth / baseW));
+  }
+
+  function applyZoom() {
+    const min = fitZoom();
+    zoom = Math.max(min, Math.min(MAX, Math.round(zoom * 100) / 100));
+    zoomSurfaceEl.style.zoom  = `${zoom}`;
+    zoomSurfaceEl.style.transform = "none";
+    zoomSurfaceEl.style.width = `${baseW}px`;
+    if (resetBtn) resetBtn.textContent = `${Math.round(zoom * 100)}%`;
+  }
+
+  function fitToPanel() {
+    zoom = fitZoom();
+    applyZoom();
+    scrollEl.scrollLeft = 0;
+    scrollEl.scrollTop  = 0;
+  }
+
+  inBtn?.addEventListener   ("click", () => { zoom += STEP; applyZoom(); });
+  outBtn?.addEventListener  ("click", () => { zoom -= STEP; applyZoom(); });
+  resetBtn?.addEventListener("click", () => fitToPanel());
+
+  scrollEl.addEventListener("wheel", (e) => {
+    if (!e.ctrlKey) return;
+    e.preventDefault();
+    zoom += e.deltaY < 0 ? STEP : -STEP;
+    applyZoom();
+  }, { passive: false });
+
+  window.addEventListener("resize", () => {
+    if (zoom < fitZoom()) zoom = fitZoom();
+    applyZoom();
+  });
+
+  fitToPanel();
+}

@@ -48,7 +48,7 @@ namespace MarchMadness.Web.Pages
                         // Create a user record for this authenticated user
                         user = new User
                         {
-                            Name = User.Identity?.Name ?? "Supabase User",
+                            Name = User.FindFirst("email")?.Value ?? User.Identity?.Name ?? "Supabase User",
                             AuthUserId = authUserId
                         };
                         _context.Users.Add(user);

@@ -1,4 +1,7 @@
-using Microsoft.AspNetCore.Authentication.Negotiate;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 using Microsoft.EntityFrameworkCore;
 using MarchMadness.Web.Data;
 using MarchMadness.Web.Models;
@@ -18,29 +21,49 @@ builder.Services.AddDbContext<MarchMadnessContext>(options =>
 builder.Services.AddHttpClient<NcaaApiClient>();
 builder.Services.AddScoped<BracketSyncService>();
 builder.Services.AddScoped<StandingsService>();
+builder.Services.AddSingleton<ScoresUpdateTracker>();
 
-// Use Windows negotiate authentication (original behavior)
-builder.Services.AddAuthentication(NegotiateDefaults.AuthenticationScheme)
-    .AddNegotiate();
-
-builder.Services.AddAuthorization(options =>
-{
-    // By default, require authenticated users
-    options.FallbackPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
-        .RequireAuthenticatedUser()
-        .Build();
-
-    // Admin policy: match against Windows username (original behavior)
-    options.AddPolicy("AdminOnly", policy =>
+// Use JWT Bearer authentication (Supabase)
+builder.Services.AddAuthentication(options =>
     {
-        var adminUsers = builder.Configuration.GetSection("AdminUsers").Get<string[]>() ?? Array.Empty<string>();
-        policy.RequireAssertion(context =>
+        options.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+        options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddCookie(options =>
+    {
+        options.LoginPath = "/Admin/Login";
+        options.ExpireTimeSpan = TimeSpan.FromHours(8);
+    })
+    .AddJwtBearer(options =>
+    {
+        // If a Supabase JWT secret is configured, validate signature using symmetric key.
+        var jwtSecret = builder.Configuration["Supabase:JwtSecret"];
+        if (!string.IsNullOrEmpty(jwtSecret))
         {
-            var username = context.User.Identity?.Name;
-            return username != null && adminUsers.Contains(username, StringComparer.OrdinalIgnoreCase);
-        });
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = false,
+                ValidateAudience = false,
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret))
+            };
+        }
+        else
+        {
+            // Development fallback: accept tokens without signature validation
+            options.RequireHttpsMetadata = false;
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = false,
+                ValidateAudience = false,
+                ValidateIssuerSigningKey = false
+            };
+        }
     });
-});
+
+// Register Supabase auth helper
+builder.Services.AddScoped<SupabaseAuthService>();
 
 builder.Services.AddRazorPages();
 
@@ -54,22 +77,30 @@ using (var scope = app.Services.CreateScope())
     
     try
     {
+        Console.WriteLine("[diagnostic] Beginning DB.Migrate()");
         db.Database.Migrate();
+        Console.WriteLine("[diagnostic] DB.Migrate() completed");
         logger.LogInformation("Database migrated/initialized");
 
         // Sync bracket data from API on startup
         var syncService = scope.ServiceProvider.GetRequiredService<BracketSyncService>();
         
         logger.LogInformation("Syncing Men's Basketball bracket data...");
+        Console.WriteLine("[diagnostic] Starting SyncBracketDataAsync basketball-men");
         await syncService.SyncBracketDataAsync("basketball-men", 2025);
+        Console.WriteLine("[diagnostic] Completed SyncBracketDataAsync basketball-men");
         
         logger.LogInformation("Syncing Women's Basketball bracket data...");
+        Console.WriteLine("[diagnostic] Starting SyncBracketDataAsync basketball-women");
         await syncService.SyncBracketDataAsync("basketball-women", 2025);
+        Console.WriteLine("[diagnostic] Completed SyncBracketDataAsync basketball-women");
         
         logger.LogInformation("Bracket data sync completed");
     }
     catch (Exception ex)
     {
+        // Ensure exception details are visible on console during diagnostics
+        Console.WriteLine("[diagnostic] Exception during startup initialization: " + ex.ToString());
         logger.LogError(ex, "Error during startup initialization");
     }
 }
@@ -113,4 +144,14 @@ app.MapPost("/api/users", async (HttpContext http, MarchMadnessContext db) =>
 
 app.MapRazorPages();
 
+// API to get last update timestamp for a sport
+app.MapGet("/api/sync/lastupdated/{sport}", (string sport, ScoresUpdateTracker tracker) =>
+{
+    var dt = tracker.GetLastUpdatedUtc(sport);
+    if (dt == null) return Results.NoContent();
+    return Results.Ok(new { sport, lastUpdatedUtc = dt.Value.ToString("o") });
+});
+
+Console.WriteLine("[diagnostic] About to call app.Run()");
 app.Run();
+Console.WriteLine("[diagnostic] app.Run() returned");
