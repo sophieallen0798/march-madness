@@ -16,29 +16,60 @@ Deno.serve(async (req: Request) => {
       headers: {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Authorization, Content-Type",
+        "Access-Control-Allow-Headers": "Authorization, Content-Type, x-admin-code",
       },
     });
   }
 
   // ── Auth ──────────────────────────────────────────────────────────────────
-  const authHeader = req.headers.get("Authorization");
-  if (!authHeader?.startsWith("Bearer ")) return jsonError("Missing auth", 401);
-  const jwt = authHeader.replace("Bearer ", "");
-
+  // Support either Supabase JWT or an admin code (x-admin-code header)
   const supabaseUrl      = Deno.env.get("SUPABASE_URL")!;
   const supabaseAnonKey  = Deno.env.get("SUPABASE_ANON_KEY")!;
   const serviceKey       = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const adminEmailsRaw   = Deno.env.get("ADMIN_EMAILS") ?? "";
   const adminEmails      = adminEmailsRaw.split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
 
-  const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-    global: { headers: { Authorization: `Bearer ${jwt}` } },
-  });
-  const { data: { user }, error: userErr } = await userClient.auth.getUser();
-  if (userErr || !user) return jsonError("Invalid token", 401);
-  if (!adminEmails.includes(user.email?.toLowerCase() ?? "")) {
-    return jsonError("Forbidden", 403);
+  const adminCodeHeader = req.headers.get("x-admin-code") ?? "";
+  // Use a dedicated admin access code for function calls (separate from SITE_ACCESS_CODE used for site gating)
+  const adminCodeEnv = (Deno.env.get("ADMIN_ACCESS_CODE") ?? "").trim();
+
+  // Attempt to read code from request body (support JSON or urlencoded form)
+  let adminCodeBody = "";
+  try {
+    const raw = await req.text();
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        adminCodeBody = (parsed?.code ?? "").toString();
+      } catch {
+        try {
+          const params = new URLSearchParams(raw);
+          adminCodeBody = params.get("code") ?? "";
+        } catch {
+          adminCodeBody = "";
+        }
+      }
+    }
+  } catch {
+    adminCodeBody = "";
+  }
+
+  const providedAdminCode = (adminCodeHeader || adminCodeBody || "").trim();
+  if (providedAdminCode && adminCodeEnv && providedAdminCode === adminCodeEnv) {
+    // Bypass JWT validation — treat as admin
+  } else {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) return jsonError("Missing auth", 401);
+    const jwt = authHeader.replace("Bearer ", "");
+
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: `Bearer ${jwt}` } },
+    });
+    const { data: { user }, error: userErr } = await userClient.auth.getUser();
+    if (userErr || !user) return jsonError("Invalid token", 401);
+    if (!adminEmails.includes(user.email?.toLowerCase() ?? "")) {
+      return jsonError("Forbidden", 403);
+    }
   }
 
   // ── Parse body ────────────────────────────────────────────────────────────

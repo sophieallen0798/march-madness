@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -8,134 +9,103 @@
   <link rel="stylesheet" href="css/styles.css" />
   <script>if (!localStorage.getItem("site_access")) location.replace("access.html");</script>
 </head>
+
 <body>
 
-<!-- ── Navigation ─────────────────────────────────────────── -->
-<nav class="navbar navbar-expand-sm navbar-light bg-white border-bottom">
+  <!-- ── Navigation (included) ───────────────────────────────── -->
+  <script src="js/include.js" data-include="header"></script>
+
+  <!-- ── Main Content ────────────────────────────────────────── -->
   <div class="container">
-    <a class="navbar-brand" href="index.html">March Madness</a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navCollapse">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between" id="navCollapse">
-      <ul class="navbar-nav flex-grow-1">
-        <li class="nav-item"><a class="nav-link text-dark" href="index.html">Home</a></li>
-        <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle text-dark" href="#" data-bs-toggle="dropdown">Submit Bracket</a>
-          <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="submit-bracket.html?sport=basketball-men">Men's Basketball</a></li>
-            <li><a class="dropdown-item" href="submit-bracket.html?sport=basketball-women">Women's Basketball</a></li>
-          </ul>
-        </li>
-        <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle text-dark" href="#" data-bs-toggle="dropdown">Standings</a>
-          <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="standings.html?sport=basketball-men">Men's Basketball</a></li>
-            <li><a class="dropdown-item" href="standings.html?sport=basketball-women">Women's Basketball</a></li>
-          </ul>
-        </li>
-        <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle text-dark" href="#" data-bs-toggle="dropdown">View Bracket</a>
-          <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="my-bracket.html?sport=basketball-men">Men's Basketball</a></li>
-            <li><a class="dropdown-item" href="my-bracket.html?sport=basketball-women">Women's Basketball</a></li>
-          </ul>
-        </li>
-        <li class="nav-item d-none" id="nav-admin">
-          <a class="nav-link text-dark" href="admin.html">Admin</a>
-        </li>
-      </ul>
-      <span class="navbar-text me-2" id="nav-user-email"></span>
-      <ul class="navbar-nav">
-        <li class="nav-item" id="nav-signin">
-          <a class="nav-link" href="login.html">Admin Login</a>
-        </li>
-        <li class="nav-item d-none" id="nav-signout">
-          <button class="btn btn-link nav-link" onclick="signOut()">Sign out</button>
-        </li>
-      </ul>
-    </div>
-  </div>
-</nav>
+    <main role="main" class="pb-3">
 
-<!-- ── Main Content ────────────────────────────────────────── -->
-<div class="container">
-  <main role="main" class="pb-3">
+      <div class="text-center mt-5">
+        <h1 class="display-3">March Madness Tournament</h1>
+        <p class="lead">Fill out brackets for both Men's and Women's Basketball and compete with your coworkers!</p>
 
-    <div class="text-center mt-5">
-      <h1 class="display-3">March Madness Tournament</h1>
-      <p class="lead">Fill out brackets for both Men's and Women's Basketball and compete with your coworkers!</p>
-
-      <div class="row mt-5 g-4">
-        <div class="col-md-6">
-          <div class="card h-100">
-            <div class="card-header bg-primary text-white"><h3>Submit Brackets</h3></div>
-            <div class="card-body">
-              <p>Submit your predictions for the tournament</p>
-              <a href="submit-bracket.html?sport=basketball-women" class="btn btn-primary me-2">Submit Women's Bracket</a>
-              <a href="submit-bracket.html?sport=basketball-men"   class="btn btn-primary">Submit Men's Bracket</a>
+        <div class="row mt-5 g-4">
+          <div class="col-md-6">
+            <div class="card h-100">
+              <div class="card-header bg-primary text-white">
+                <h3>Submit Brackets</h3>
+              </div>
+              <div class="card-body">
+                <p>Submit your predictions for the tournament</p>
+                <a href="submit-bracket.html?sport=basketball-women" class="btn btn-primary me-2">Submit Women's
+                  Bracket</a>
+                <a href="submit-bracket.html?sport=basketball-men" class="btn btn-primary">Submit Men's Bracket</a>
+              </div>
             </div>
           </div>
-        </div>
-        <div class="col-md-6">
-          <div class="card h-100 border-info">
-            <div class="card-header bg-info text-white"><h3>View Standings</h3></div>
-            <div class="card-body">
-              <p>See how everyone's picks are doing</p>
-              <a href="standings.html?sport=basketball-women" class="btn btn-outline-info me-2">Women's Standings</a>
-              <a href="standings.html?sport=basketball-men"   class="btn btn-outline-primary">Men's Standings</a>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="row mt-4">
-        <div class="col-12">
-          <div class="card">
-            <div class="card-body">
-              <h3>How It Works</h3>
-              <div class="text-start">
-                <p><strong>Scoring System:</strong></p>
-                <ul>
-                  <li>Round 1: <strong>1 point</strong> per correct pick</li>
-                  <li>Round 2: <strong>2 points</strong></li>
-                  <li>Round 3 (Sweet 16): <strong>4 points</strong></li>
-                  <li>Round 4 (Elite Eight): <strong>8 points</strong></li>
-                  <li>Round 5 (Final Four): <strong>16 points</strong></li>
-                  <li>Championship: <strong>32 points</strong></li>
-                </ul>
-                <p class="text-muted">
-                  Tournament data is synchronized from the NCAA API by an administrator.
-                  Scores and standings are updated as games complete.
-                </p>
+          <div class="col-md-6">
+            <div class="card h-100 border-info">
+              <div class="card-header bg-info text-white">
+                <h3>View Standings</h3>
+              </div>
+              <div class="card-body">
+                <p>See how everyone's picks are doing</p>
+                <a href="standings.html?sport=basketball-women" class="btn btn-outline-info me-2">Women's Standings</a>
+                <a href="standings.html?sport=basketball-men" class="btn btn-outline-primary">Men's Standings</a>
               </div>
             </div>
           </div>
         </div>
+
+        <div class="row mt-4">
+          <div class="col-12">
+            <div class="card">
+              <div class="card-body">
+                <h3>How It Works</h3>
+                <div class="text-start">
+                  <p><strong>Scoring System:</strong></p>
+                  <ul>
+                    <li>Round 1: <strong>1 point</strong> per correct pick</li>
+                    <li>Round 2: <strong>2 points</strong></li>
+                    <li>Round 3 (Sweet 16): <strong>4 points</strong></li>
+                    <li>Round 4 (Elite Eight): <strong>8 points</strong></li>
+                    <li>Round 5 (Final Four): <strong>16 points</strong></li>
+                    <li>Championship: <strong>32 points</strong></li>
+                  </ul>
+                  <p class="text-muted">
+                    Tournament data is synchronized from the NCAA API by an administrator.
+                    Scores and standings are updated as games complete.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p class="text-muted">
+          Unofficial bracket pool created for entertainment purposes. Not affiliated with or endorsed by the National
+          Collegiate Athletic Association, any universities, or EVR. All team names, logos, and
+          trademarks belong to their respective owners.
+        </p>
+
+        <!-- Admin shortcut shown only to admins -->
+        <div class="alert alert-warning mt-5 d-none" id="admin-alert">
+          <h4>Admin Controls</h4>
+          <p>You have administrator access. Use the Admin page to sync tournament data and update scores.</p>
+          <a href="admin.html" class="btn btn-warning">Go to Admin Panel</a>
+        </div>
       </div>
 
-      <!-- Admin shortcut shown only to admins -->
-      <div class="alert alert-warning mt-5 d-none" id="admin-alert">
-        <h4>Admin Controls</h4>
-        <p>You have administrator access. Use the Admin page to sync tournament data and update scores.</p>
-        <a href="admin.html" class="btn btn-warning">Go to Admin Panel</a>
-      </div>
-    </div>
+    </main>
+  </div>
 
-  </main>
-</div>
-
-<!-- ── Scripts ─────────────────────────────────────────────── -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js"></script>
-<script src="js/auth.js"></script>
-<script>
-  document.addEventListener("DOMContentLoaded", async () => {
-    await updateNav();
-    const admin = await isAdmin();
-    if (admin) document.getElementById("admin-alert")?.classList.remove("d-none");
-  });
-</script>
+  <script src="js/include.js" data-include="footer"></script>
+  <!-- ── Scripts ─────────────────────────────────────────────── -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", async () => {
+      await updateNav();
+      const admin = await isAdmin();
+      if (admin) document.getElementById("admin-alert")?.classList.remove("d-none");
+    });
+  </script>
 </body>
+
 </html>

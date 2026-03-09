@@ -3,8 +3,70 @@
 // Used by both submit-bracket.html (editable) and my-bracket.html (scoring/read-only).
 
 // ────────────────────────────────────────────────────────────────
+// REGION CODE MAPS  (numeric region code → display label)
+// ────────────────────────────────────────────────────────────────
+
+const REGION_CODE_MAP = {
+  "1": "play-in",
+  "2": "south",
+  "3": "west",
+  "4": "east",
+  "5": "midwest",
+  "6": "final",
+  "601": "final",
+  "701": "final",
+};
+
+const REGION_CODE_MAP_W = {
+  "1": "play-in",
+  "2": "spokane",
+  "3": "birmingham",
+  "4": "spokane",
+  "5": "birmingham",
+  "6": "final",
+  "601": "final",
+  "701": "final",
+};
+
+// const REGION_CODE_MAP_W = {
+//   "1": "play-in",
+//   "2": "fort worth 1",
+//   "3": "sacramento 1",
+//   "4": "fort worth 2",
+//   "5": "sacramento 2",
+//   "6": "final",
+//   "601": "final",
+//   "701": "final",
+// };
+
+// ────────────────────────────────────────────────────────────────
 // DATA LOADING
 // ────────────────────────────────────────────────────────────────
+
+/**
+ * Derives the numeric sectionId (2-5) from a bracket_position_id when
+ * the section_id column is missing or 0 (e.g. data synced before the
+ * section_id migration).
+ *
+ * The NCAA bracket encodes section deterministically via position offsets:
+ *   Round 2 (8 games/section): offsets 1-8 → 2, 9-16 → 4, 17-24 → 3, 25-32 → 5
+ *   Round 3 (4 games/section): offsets 1-4 → 2, 5-8 → 4, 9-12 → 3, 13-16 → 5
+ *   Round 4 (2 games/section): offsets 1-2 → 2, 3-4 → 4, 5-6 → 3, 7-8 → 5
+ *   Round 5 (1 game/section):  offset  1  → 2,  2  → 4,  3  → 3,  4  → 5
+ * This pattern applies consistently to both men's and women's brackets.
+ */
+function inferSectionId(bracketPositionId) {
+  if (!bracketPositionId) return 0;
+  const round = Math.floor(bracketPositionId / 100);
+  if (round === 1) return 1; // First Four
+  if (round >= 6) return 6; // Final Four / Championship
+  const offset = bracketPositionId % 100;
+  // Number of games per section shrinks by half each round: 8 → 4 → 2 → 1
+  const gamesPerSection = Math.pow(2, 5 - round);
+  const sectionOrder = [2, 4, 3, 5];
+  const idx = Math.min(Math.floor((offset - 1) / gamesPerSection), 3);
+  return sectionOrder[idx] ?? 0;
+}
 
 /**
  * Fetches all games and teams for a given sport/year from Supabase.
@@ -32,12 +94,27 @@ async function loadBracketData(sport, year = TOURNAMENT_YEAR) {
 
   const teams = teamsResp.data ?? [];
   const teamById = new Map(teams.map((t) => [t.id, t]));
-  const games = (gamesResp.data ?? []).map((g) => ({
-    ...g,
-    team1: g.team1_id ? teamById.get(g.team1_id) ?? null : null,
-    team2: g.team2_id ? teamById.get(g.team2_id) ?? null : null,
-    winner: g.winner_id ? teamById.get(g.winner_id) ?? null : null,
-  }));
+  const games = (gamesResp.data ?? []).map((g) => {
+    // Prefer the stored section_id; fall back to deriving it from bracket_position_id.
+    // The fallback handles data synced before the section_id migration (DEFAULT 0).
+    const sectionId = g.section_id || inferSectionId(g.bracket_position_id);
+    return {
+      ...g,
+      sectionId,
+      team1: g.team1_id ? teamById.get(g.team1_id) ?? null : null,
+      team2: g.team2_id ? teamById.get(g.team2_id) ?? null : null,
+      winner: g.winner_id ? teamById.get(g.winner_id) ?? null : null,
+    };
+  });
+
+  // Diagnostic: log section distribution so missing/incorrect section_id is visible in console
+  try {
+    const bySid = {};
+    games.forEach((x) => { bySid[x.sectionId] = (bySid[x.sectionId] ?? 0) + 1; });
+    const usingFallback = games.filter((x) => !x.section_id && x.sectionId).length;
+    console.log(`loadBracketData [${sport}] - games per sectionId:`, bySid,
+      usingFallback ? `(${usingFallback} used position fallback - re-sync to persist section_id)` : "");
+  } catch (e) { /* ignore logging errors */ }
 
   return { games, teams, teamById };
 }
@@ -46,14 +123,16 @@ async function loadBracketData(sport, year = TOURNAMENT_YEAR) {
 // BRACKET LAYOUT REGIONS
 // ────────────────────────────────────────────────────────────────
 
-const FINAL_REGIONS = ["final", "finals", "region6"];
+// sectionId 6 = "CC" regionCode = Final Four + Championship games
+const FINAL_SECTION_IDS = new Set([6]);
 
 function isFinalGame(game) {
-  return FINAL_REGIONS.includes((game.region ?? "").toLowerCase());
+  return FINAL_SECTION_IDS.has(game.sectionId);
 }
 
-const LEFT_REGIONS  = ["south", "west"];
-const RIGHT_REGIONS = ["east", "midwest"];
+// Numeric region codes for left and right bracket panels
+const LEFT_REGIONS  = [2, 3];
+const RIGHT_REGIONS = [4, 5];
 
 // Rounds displayed left→right for left panels, right→left for right panels
 const LEFT_ROUND_ORDER  = [2, 3, 4, 5];
@@ -259,9 +338,34 @@ function renderFinalPanel(finalGames, renderGameFn) {
  * @param {Array}       games                  Enriched game objects (with team1/team2)
  * @param {string}      mode                   "editable" | "scoring"
  * @param {Map}         picksMap               Map<gameId, pickedTeamId> (only for scoring mode)
+ * @param {string}      sport                  "basketball-men" | "basketball-women"
  */
-function renderBracket(container, games, mode = "editable", picksMap = new Map()) {
+function renderBracket(container, games, mode = "editable", picksMap = new Map(), sport = "basketball-men") {
   const isEditable = mode === "editable";
+  const labelMap = sport === "basketball-women" ? REGION_CODE_MAP_W : REGION_CODE_MAP;
+
+  // Build a set of region names that appear for more than one sectionId so we can
+  // disambiguate them (e.g. women's 2025 has two "Spokane" pods and two "Birmingham" pods).
+  const allRegionCodes = [...LEFT_REGIONS, ...RIGHT_REGIONS];
+  const regionNameCount = {};
+  allRegionCodes.forEach((c) => {
+    const s = games.find((g) => g.sectionId === c);
+    const name = s?.region ? titleCase(s.region) : titleCase(labelMap[String(c)] ?? String(c));
+    regionNameCount[name] = (regionNameCount[name] ?? 0) + 1;
+  });
+  const duplicateNames = new Set(Object.keys(regionNameCount).filter((n) => regionNameCount[n] > 1));
+  // Track how many times each duplicate name has been used so we can number them 1, 2, …
+  const duplicateUseCount = {};
+
+  function regionLabel(code) {
+    const sample = games.find((g) => g.sectionId === code);
+    const base = sample?.region ? titleCase(sample.region) : titleCase(labelMap[String(code)] ?? String(code));
+    if (duplicateNames.has(base)) {
+      duplicateUseCount[base] = (duplicateUseCount[base] ?? 0) + 1;
+      return `${base} (${duplicateUseCount[base]})`;
+    }
+    return base;
+  }
 
   function renderGame(game) {
     if (isEditable) return editableGameCardHtml(game);
@@ -269,15 +373,14 @@ function renderBracket(container, games, mode = "editable", picksMap = new Map()
     return scoringGameCardHtml(game, pickedTeamId);
   }
 
-  const regionGames = (region) =>
-    games.filter((g) => !isFinalGame(g) && (g.region ?? "").toLowerCase() === region.toLowerCase());
+  const regionGames = (code) =>
+    games.filter((g) => !isFinalGame(g) && g.sectionId === code);
 
   const leftPanels = LEFT_REGIONS
-    .map((r) => renderRegionPanel(capitalize(r), regionGames(r), LEFT_ROUND_ORDER, "region-panel-left", renderGame))
+    .map((code) => renderRegionPanel(regionLabel(code), regionGames(code), LEFT_ROUND_ORDER, "region-panel-left", renderGame))
     .join("");
-
   const rightPanels = RIGHT_REGIONS
-    .map((r) => renderRegionPanel(capitalize(r), regionGames(r), RIGHT_ROUND_ORDER, "region-panel-right", renderGame))
+    .map((code) => renderRegionPanel(regionLabel(code), regionGames(code), RIGHT_ROUND_ORDER, "region-panel-right", renderGame))
     .join("");
 
   const finalGames = games.filter(isFinalGame);
@@ -297,6 +400,10 @@ function renderBracket(container, games, mode = "editable", picksMap = new Map()
 
 function capitalize(s) {
   return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function titleCase(s) {
+  return String(s).replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 // ────────────────────────────────────────────────────────────────
