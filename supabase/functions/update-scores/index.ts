@@ -148,31 +148,47 @@ Deno.serve(async (req: Request) => {
     .eq("sport", sport)
     .eq("year", year);
 
-  const { data: decidedGames } = await svc
-    .from("games")
-    .select("id, team1_id, team2_id, winner_id, round")
-    .eq("sport", sport)
-    .eq("year", year)
-    .not("winner_id", "is", null);
+  // ── Resolve combo picks where the play-in winner is now known ─────────────
+  // When a round 2 game's team slot has been filled (sync-bracket ran after the
+  // play-in), update any picks that still carry picked_team_id_2 for that game
+  // to a single resolved team (the one that actually entered the game).
+  const { data: comboPicks } = await svc
+    .from("picks")
+    .select("id, picked_team_id, picked_team_id_2, games(id, team1_id, team2_id, sport, year)")
+    .not("picked_team_id_2", "is", null);
 
-  const eliminatedSet = new Set<number>();
-  for (const g of (decidedGames ?? [])) {
-    if (g.team1_id && g.team1_id !== g.winner_id) eliminatedSet.add(g.team1_id);
-    if (g.team2_id && g.team2_id !== g.winner_id) eliminatedSet.add(g.team2_id);
+  for (const p of (comboPicks ?? [])) {
+    const game = (p as any).games;
+    if (!game || game.sport !== sport || game.year !== year) continue;
+    const t1 = game.team1_id as number | null;
+    const t2 = game.team2_id as number | null;
+    const pid  = p.picked_team_id as number;
+    const pid2 = (p as any).picked_team_id_2 as number;
+    let resolvedId: number | null = null;
+    if (t1 && (t1 === pid || t1 === pid2)) resolvedId = t1;
+    else if (t2 && (t2 === pid || t2 === pid2)) resolvedId = t2;
+    if (resolvedId) {
+      await svc.from("picks")
+        .update({ picked_team_id: resolvedId, picked_team_id_2: null })
+        .eq("id", p.id);
+    }
   }
 
+  // ── Fetch picks (after resolution) and recalculate points ─────────────────
   const { data: allPickRows } = await svc
     .from("picks")
-    .select("bracket_id, game_id, picked_team_id, games(round, winner_id)")
+    .select("bracket_id, game_id, picked_team_id, picked_team_id_2, games(round, winner_id)")
     .in("bracket_id", (brackets ?? []).map((b: any) => b.id));
 
   const pointsByBracket = new Map<number, number>();
   for (const p of (allPickRows ?? [])) {
     const game = (p as any).games;
     if (!game) continue;
-    const round      = game.round as number;
+    const round       = game.round as number;
     const roundPoints = Math.pow(2, round - 1);
-    if (game.winner_id && p.picked_team_id === game.winner_id) {
+    const pid2        = (p as any).picked_team_id_2 as number | null;
+    if (game.winner_id &&
+        (p.picked_team_id === game.winner_id || pid2 === game.winner_id)) {
       pointsByBracket.set(p.bracket_id, (pointsByBracket.get(p.bracket_id) ?? 0) + roundPoints);
     }
   }

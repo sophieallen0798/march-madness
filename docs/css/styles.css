@@ -1,5 +1,9 @@
 /* March Madness – shared styles */
-
+:root {
+  --blue-color: #3056BF; 
+  --gold-dark: #daa520;
+  --gold-light: #e3d5a8;
+}
 /* ── Bracket shell ────────────────────────────────────────── */
 .bracket-shell {
   width: 100%;

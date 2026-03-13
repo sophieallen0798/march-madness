@@ -114,7 +114,7 @@
         if (bracketIds.length) {
           const { data: picks, error: pErr } = await supabase
             .from("picks")
-            .select("bracket_id, game_id, picked_team_id, games(round, winner_id, team1_id, team2_id)")
+            .select("bracket_id, game_id, picked_team_id, picked_team_id_2, games(round, winner_id, team1_id, team2_id)")
             .in("bracket_id", bracketIds);
           if (pErr) throw pErr;
           allPicks = picks ?? [];
@@ -156,10 +156,16 @@
               const game = p.games;
               if (!game) continue;
               const pts = Math.pow(2, game.round - 1);
+              const isCombo = p.picked_team_id_2 != null;
               if (!game.winner_id) {
-                if (!eliminated.has(p.picked_team_id)) possible += pts;
+                // Possible if at least one of the picked team(s) hasn't been eliminated
+                if (isCombo) {
+                  if (!eliminated.has(p.picked_team_id) || !eliminated.has(p.picked_team_id_2)) possible += pts;
+                } else {
+                  if (!eliminated.has(p.picked_team_id)) possible += pts;
+                }
               } else {
-                if (p.picked_team_id === game.winner_id) possible += pts;
+                if (p.picked_team_id === game.winner_id || p.picked_team_id_2 === game.winner_id) possible += pts;
               }
             }
 
@@ -213,13 +219,24 @@
               const game = p.games;
               if (!game) continue;
               const pts = Math.pow(2, game.round - 1);
+              const isCombo = p.picked_team_id_2 != null;
               if (!game.winner_id) {
-                if (!eliminated.has(p.picked_team_id)) possible += pts;
+                if (isCombo) {
+                  if (!eliminated.has(p.picked_team_id) || !eliminated.has(p.picked_team_id_2)) possible += pts;
+                } else {
+                  if (!eliminated.has(p.picked_team_id)) possible += pts;
+                }
               } else {
-                if (p.picked_team_id === game.winner_id) possible += pts;
+                if (p.picked_team_id === game.winner_id || p.picked_team_id_2 === game.winner_id) possible += pts;
               }
               if (p.game_id === champGameId) {
-                champPick = teamById.get(p.picked_team_id)?.name_short ?? "—";
+                if (p.picked_team_id_2 != null) {
+                  const n1 = teamById.get(p.picked_team_id)?.name_short ?? "";
+                  const n2 = teamById.get(p.picked_team_id_2)?.name_short ?? "";
+                  champPick = n1 && n2 ? `${n1}/${n2}` : (n1 || n2 || "—");
+                } else {
+                  champPick = teamById.get(p.picked_team_id)?.name_short ?? "—";
+                }
               }
             }
 

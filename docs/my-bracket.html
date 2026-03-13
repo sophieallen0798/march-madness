@@ -174,7 +174,7 @@
     // Load picks for this bracket
     const { data: picks, error: pErr } = await supabase
       .from("picks")
-      .select("game_id, picked_team_id")
+      .select("game_id, picked_team_id, picked_team_id_2")
       .eq("bracket_id", bracketId);
 
     if (pErr) {
@@ -183,9 +183,10 @@
       return;
     }
 
-    const picksMap = new Map((picks ?? []).map((p) => [p.game_id, p.picked_team_id]));
+    const picksMap  = new Map((picks ?? []).map((p) => [p.game_id, p.picked_team_id]));
+    const picksMap2 = new Map((picks ?? []).filter((p) => p.picked_team_id_2 != null).map((p) => [p.game_id, p.picked_team_id_2]));
     const container = document.getElementById("bracketContainer");
-    renderBracket(container, bracketGames, "scoring", picksMap, sport);
+    renderBracket(container, bracketGames, "scoring", picksMap, sport, picksMap2);
   }
 </script>
 </body>

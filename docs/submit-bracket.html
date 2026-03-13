@@ -185,7 +185,7 @@
   <script src="js/bracket-render.js"></script>
   <script>
     const params = new URLSearchParams(window.location.search);
-    const sport = params.get("sport") || "basketball-men";
+    const sport = params.get("sport") || "basketball-women";
     let verifiedName = "";
     let verifiedBuyIn = false;
     let verifiedBuyInEmail = "";
@@ -321,7 +321,8 @@
         bracketGames = games;
         console.log(`Loaded ${games.length} games for ${sport} ${TOURNAMENT_YEAR}`);
 console.log("Games:", games);
-        if (!games.length) {
+        const playableGames = games.filter(g => g.round >= 2);
+        if (!playableGames.length) {
           document.getElementById("loadingMsg").classList.add("d-none");
           showError("Tournament data not yet available. Please check back later or contact the admin.");
           document.getElementById("nameStep").classList.remove("d-none");
@@ -435,11 +436,15 @@ console.log("Games:", games);
         if (bErr) throw bErr;
 
         // Insert picks
-        const pickRows = [...picks.entries()].map(([gameId, teamId]) => ({
-          bracket_id: newBracket.id,
-          game_id: gameId,
-          picked_team_id: teamId,
-        }));
+        const pickRows = [...picks.entries()].map(([gameId, pick]) => {
+          const row = {
+            bracket_id: newBracket.id,
+            game_id: gameId,
+            picked_team_id: pick.primary,
+          };
+          if (pick.secondary != null) row.picked_team_id_2 = pick.secondary;
+          return row;
+        });
 
         const { error: pErr } = await supabase.from("picks").insert(pickRows);
         if (pErr) throw pErr;

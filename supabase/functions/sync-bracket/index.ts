@@ -79,7 +79,7 @@ Deno.serve(async (req: Request) => {
 
   // ── Extract sport/year from already-parsed body ───────────────────────────
   let sport = "basketball-men";
-  let year = 2025;
+  let year = 202;
   if (parsedBody) {
     if (parsedBody.sport) sport = parsedBody.sport;
     if (parsedBody.year) year = Number(parsedBody.year);

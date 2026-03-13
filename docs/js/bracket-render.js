@@ -69,6 +69,23 @@ function inferSectionId(bracketPositionId) {
 }
 
 /**
+ * Creates a synthetic "combo" team object for a play-in matchup.
+ * Used when round 1 teams are known but the winner hasn't played yet,
+ * so the round 2 slot shows "Team1/Team2" as a single selectable option.
+ */
+function makeComboTeam(t1, t2) {
+  return {
+    isCombo: true,
+    id: `${t1.id}:${t2.id}`,
+    id1: t1.id,
+    id2: t2.id,
+    name_short: `${t1.name_short}/${t2.name_short}`,
+    seed: "",
+    logo_url: null,
+  };
+}
+
+/**
  * Fetches all games and teams for a given sport/year from Supabase.
  * Returns { games, teams, teamById }.
  */
@@ -79,7 +96,7 @@ async function loadBracketData(sport, year = TOURNAMENT_YEAR) {
       .select("*")
       .eq("sport", sport)
       .eq("year", year)
-      .gte("round", 2)      // exclude First Four (round 1) from bracket display
+      .gte("round", 1)      // include First Four (round 1) for play-in display
       .order("round")
       .order("bracket_position_id"),
     supabase
@@ -95,15 +112,41 @@ async function loadBracketData(sport, year = TOURNAMENT_YEAR) {
 
   const teams = teamsResp.data ?? [];
   const teamById = new Map(teams.map((t) => [t.id, t]));
-  const games = (gamesResp.data ?? []).map((g) => {
+
+  const rawGames = gamesResp.data ?? [];
+
+  // Build play-in combo lookup from round 1 games: victor position → combo team.
+  // Only create combos when both play-in teams are known.
+  const round1ByVictorPos = new Map();
+  for (const r1 of rawGames) {
+    if (r1.round !== 1) continue;
+    console.log(r1);
+    if (!r1.victor_bracket_position_id || !r1.team1_id || !r1.team2_id) continue;
+    const t1 = teamById.get(r1.team1_id);
+    const t2 = teamById.get(r1.team2_id);
+    if (t1 && t2) round1ByVictorPos.set(r1.victor_bracket_position_id, makeComboTeam(t1, t2));
+  }
+
+  const games = rawGames.map((g) => {
     // Prefer the stored section_id; fall back to deriving it from bracket_position_id.
     // The fallback handles data synced before the section_id migration (DEFAULT 0).
     const sectionId = g.section_id || inferSectionId(g.bracket_position_id);
+    let team1 = g.team1_id ? teamById.get(g.team1_id) ?? null : null;
+    let team2 = g.team2_id ? teamById.get(g.team2_id) ?? null : null;
+    // For round 2 games: if a team slot is TBA but a play-in game with both teams
+    // feeds this position, show "TeamA/TeamB" as the composite option.
+    if (g.round === 2) {
+      const combo = round1ByVictorPos.get(g.bracket_position_id);
+      if (combo) {
+        if (!team1) team1 = combo;
+        else if (!team2) team2 = combo;
+      }
+    }
     return {
       ...g,
       sectionId,
-      team1: g.team1_id ? teamById.get(g.team1_id) ?? null : null,
-      team2: g.team2_id ? teamById.get(g.team2_id) ?? null : null,
+      team1,
+      team2,
       winner: g.winner_id ? teamById.get(g.winner_id) ?? null : null,
     };
   });
@@ -150,6 +193,30 @@ function logoHtml(team) {
 }
 
 /**
+ * Renders a read-only team row for informational play-in cards (no radio button).
+ */
+function infoTeamRowHtml(team, slot, winnerId) {
+  const border = slot === 1 ? "border-bottom" : "";
+  if (!team) {
+    return `<div class="team-option-scoring d-flex align-items-center px-3 py-2 ${border}">
+              <span class="small text-muted fst-italic">TBD</span>
+            </div>`;
+  }
+  const isWinner = winnerId && team.id === winnerId;
+  const bold = isWinner ? "fw-bold" : "";
+  const check = isWinner ? `<span class="ms-auto text-success small">&#10003;</span>` : "";
+  return `
+    <div class="team-option-scoring d-flex align-items-center px-3 py-2 ${border}">
+      <span class="d-flex align-items-center gap-2 w-100">
+        ${logoHtml(team)}
+        <span class="text-muted small">${team.seed}</span>
+        <span class="${bold}">${team.name_short}</span>
+        ${check}
+      </span>
+    </div>`;
+}
+
+/**
  * Renders a single team row used by the editable (submit) bracket.
  * slot: 1 or 2.
  */
@@ -160,6 +227,29 @@ function editableTeamRowHtml(gameId, team, slot) {
             </div>`;
   }
   const borderClass = slot === 1 ? "border-bottom" : "";
+  if (team.isCombo) {
+    return `
+      <div class="team-option ${borderClass} form-check m-0 px-3 py-2"
+           data-game-id="${gameId}"
+           data-slot="${slot}"
+           data-team-id="${team.id}"
+           data-team-name="${team.name_short}"
+           data-team-seed=""
+           data-team-logo="">
+        <input class="form-check-input team-radio"
+               type="radio"
+               name="pick_${gameId}"
+               value="${team.id}"
+               id="g${gameId}_s${slot}"
+               autocomplete="off" />
+        <label for="g${gameId}_s${slot}" class="form-check-label w-100 ms-2" style="cursor:pointer;">
+          <span class="d-flex align-items-center gap-2">
+            <span class="badge bg-secondary text-white small">Play-In</span>
+            <span>${team.name_short}</span>
+          </span>
+        </label>
+      </div>`;
+  }
   return `
     <div class="team-option ${borderClass} form-check m-0 px-3 py-2"
          data-game-id="${gameId}"
@@ -186,10 +276,11 @@ function editableTeamRowHtml(gameId, team, slot) {
 
 /**
  * Renders a single team row used by the scoring (read-only) bracket.
- * pickedTeamId: the team the user picked for this game.
+ * pickedTeamId: the primary team the user picked for this game.
  * actualWinnerId: the confirmed winner (or null).
+ * pickedTeamId2: secondary team for a play-in combo pick (or null).
  */
-function scoringTeamRowHtml(team, slot, pickedTeamId, actualWinnerId) {
+function scoringTeamRowHtml(team, slot, pickedTeamId, actualWinnerId, pickedTeamId2 = null) {
   const isLast   = slot === 2;
   const border   = isLast ? "" : "border-bottom";
 
@@ -199,13 +290,18 @@ function scoringTeamRowHtml(team, slot, pickedTeamId, actualWinnerId) {
             </div>`;
   }
 
-  const isPicked = pickedTeamId === team.id;
+  // For combo teams still in the bracket (play-in not yet resolved), match on either sub-team ID.
+  const isPicked = team.isCombo
+    ? (pickedTeamId === team.id1 || pickedTeamId === team.id2 ||
+       pickedTeamId2 === team.id1 || pickedTeamId2 === team.id2)
+    : (pickedTeamId === team.id || pickedTeamId2 === team.id);
   let pickClass  = "";
   if (isPicked) {
     if (actualWinnerId === null || actualWinnerId === undefined) {
       pickClass = "pick-pending";
     } else {
-      pickClass = pickedTeamId === actualWinnerId ? "pick-correct" : "pick-incorrect";
+      const pickedCorrectly = actualWinnerId === pickedTeamId || actualWinnerId === pickedTeamId2;
+      pickClass = pickedCorrectly ? "pick-correct" : "pick-incorrect";
     }
   }
 
@@ -245,7 +341,7 @@ function editableGameCardHtml(game) {
     </div>`;
 }
 
-function scoringGameCardHtml(game, pickedTeamId, startTimeStr) {
+function scoringGameCardHtml(game, pickedTeamId, pickedTeamId2 = null) {
   const { id, bracket_position_id, team1, team2, winner_id, game_state, start_time } = game;
   const tbdClass = (!team1 && !team2) ? "tbd" : "";
 
@@ -261,8 +357,36 @@ function scoringGameCardHtml(game, pickedTeamId, startTimeStr) {
     <div class="bracket-game scoring-game" data-bracket-position="${bracket_position_id}">
       <div class="matchup card ${tbdClass}">
         <div class="card-body p-0">
-          ${scoringTeamRowHtml(team1, 1, pickedTeamId, winner_id)}
-          ${scoringTeamRowHtml(team2, 2, pickedTeamId, winner_id)}
+          ${scoringTeamRowHtml(team1, 1, pickedTeamId, winner_id, pickedTeamId2)}
+          ${scoringTeamRowHtml(team2, 2, pickedTeamId, winner_id, pickedTeamId2)}
+          ${statusHtml}
+        </div>
+      </div>
+    </div>`;
+}
+
+/**
+ * Read-only info card for a First Four play-in game (no radio buttons).
+ * Uses class `bracket-game-info` so pick collection/validation ignores it.
+ */
+function infoGameCardHtml(game) {
+  const { bracket_position_id, team1, team2, winner_id, game_state, start_time } = game;
+  const tbdClass = (!team1 && !team2) ? "tbd" : "";
+  let statusHtml = "";
+  if (winner_id) {
+    statusHtml = `<div class="text-center small fw-bold text-success py-1 border-top bg-light">FINAL</div>`;
+  } else if ((game_state ?? "").toLowerCase() === "live") {
+    statusHtml = `<div class="text-center small fw-bold text-danger py-1 border-top bg-light">LIVE</div>`;
+  } else if (start_time) {
+    const d = new Date(start_time);
+    statusHtml = `<div class="text-center small text-muted py-1 border-top bg-light">${d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</div>`;
+  }
+  return `
+    <div class="bracket-game-info" style="min-width:160px;max-width:220px;flex:1 1 160px;">
+      <div class="matchup card ${tbdClass}">
+        <div class="card-body p-0">
+          ${infoTeamRowHtml(team1, 1, winner_id)}
+          ${infoTeamRowHtml(team2, 2, winner_id)}
           ${statusHtml}
         </div>
       </div>
@@ -328,6 +452,27 @@ function renderFinalPanel(finalGames, renderGameFn) {
     </section>`;
 }
 
+/**
+ * Renders the First Four play-in section as a compact info strip.
+ * Returns an HTML string (empty string if no play-in games).
+ */
+function renderPlayInSection(playInGames) {
+  if (!playInGames.length) return "";
+  const cards = [...playInGames]
+    .sort((a, b) => a.bracket_position_id - b.bracket_position_id)
+    .map(infoGameCardHtml)
+    .join("");
+  return `
+    <section class="region-panel card shadow-sm region-panel-playin mb-3">
+      <div class="card-header py-2 text-center fw-semibold">First Four</div>
+      <div class="card-body p-2">
+        <div class="d-flex flex-wrap gap-3 justify-content-center align-items-start">
+          ${cards}
+        </div>
+      </div>
+    </section>`;
+}
+
 // ────────────────────────────────────────────────────────────────
 // FULL BRACKET RENDER
 // ────────────────────────────────────────────────────────────────
@@ -340,8 +485,9 @@ function renderFinalPanel(finalGames, renderGameFn) {
  * @param {string}      mode                   "editable" | "scoring"
  * @param {Map}         picksMap               Map<gameId, pickedTeamId> (only for scoring mode)
  * @param {string}      sport                  "basketball-men" | "basketball-women"
+ * @param {Map}         picksMap2              Map<gameId, pickedTeamId2> for combo picks (scoring mode)
  */
-function renderBracket(container, games, mode = "editable", picksMap = new Map(), sport = "basketball-men") {
+function renderBracket(container, games, mode = "editable", picksMap = new Map(), sport = "basketball-men", picksMap2 = new Map()) {
   const isEditable = mode === "editable";
   const labelMap = sport === "basketball-women" ? REGION_CODE_MAP_W : REGION_CODE_MAP;
 
@@ -370,8 +516,9 @@ function renderBracket(container, games, mode = "editable", picksMap = new Map()
 
   function renderGame(game) {
     if (isEditable) return editableGameCardHtml(game);
-    const pickedTeamId = picksMap.get(game.id) ?? null;
-    return scoringGameCardHtml(game, pickedTeamId);
+    const pickedTeamId  = picksMap.get(game.id) ?? null;
+    const pickedTeamId2 = picksMap2.get(game.id) ?? null;
+    return scoringGameCardHtml(game, pickedTeamId, pickedTeamId2);
   }
 
   const regionGames = (code) =>
@@ -474,15 +621,17 @@ function attachEditableHandlers(container) {
     targetOpt.dataset.teamSeed = team.seed;
     targetOpt.dataset.teamLogo = team.logo_url ?? "";
 
+    const teamInner = team.isCombo
+      ? `<span class="badge bg-secondary text-white small">Play-In</span><span>${team.name_short}</span>`
+      : `${logoHtml(team)}<span class="text-muted small">${team.seed}</span><span>${team.name_short}</span>`;
+
     targetOpt.innerHTML = `
       <input class="form-check-input team-radio" type="radio"
              name="pick_${nextGameId}" value="${team.id}"
              id="g${nextGameId}_s${slot}" autocomplete="off" />
       <label for="g${nextGameId}_s${slot}" class="form-check-label w-100 ms-2" style="cursor:pointer;">
         <span class="d-flex align-items-center gap-2">
-          ${logoHtml(team)}
-          <span class="text-muted small">${team.seed}</span>
-          <span>${team.name_short}</span>
+          ${teamInner}
         </span>
       </label>`;
 
@@ -517,7 +666,8 @@ function attachRadioHandler(radio, positionMap, propagateWinner, clearCascading,
     if (!gameEl) return;
     const victorPos = parseInt(gameEl.dataset.victorPosition);
     const sourcePos = parseInt(gameEl.dataset.bracketPosition);
-    const teamId    = parseInt(this.value);
+    const rawValue  = this.value;
+    const isCombo   = rawValue.includes(":");
 
     // Mark selected visually
     gameEl.querySelectorAll(".team-option").forEach((o) => o.classList.remove("selected"));
@@ -525,10 +675,19 @@ function attachRadioHandler(radio, positionMap, propagateWinner, clearCascading,
     if (parentOpt) parentOpt.classList.add("selected");
 
     if (victorPos && positionMap.has(victorPos)) {
-      // Build a minimal team descriptor from the option's data attributes
+      // Build a minimal team descriptor from the option's data attributes.
+      // For combo picks the id is "id1:id2" and we preserve that for cascading.
       const opt  = this.closest(".team-option");
-      const team = {
-        id:         teamId,
+      const team = isCombo ? {
+        isCombo:    true,
+        id:         rawValue,
+        id1:        parseInt(rawValue.split(":")[0]),
+        id2:        parseInt(rawValue.split(":")[1]),
+        name_short: opt?.dataset.teamName ?? "",
+        seed:       "",
+        logo_url:   "",
+      } : {
+        id:         parseInt(rawValue),
         name_short: opt?.dataset.teamName ?? "",
         seed:       parseInt(opt?.dataset.teamSeed ?? "0") || 0,
         logo_url:   opt?.dataset.teamLogo ?? "",
@@ -554,14 +713,24 @@ function attachRadioHandler(radio, positionMap, propagateWinner, clearCascading,
 // ────────────────────────────────────────────────────────────────
 
 /**
- * Returns a Map<gameId, pickedTeamId> from checked radios in container.
+ * Returns a Map<gameId, {primary, secondary}> from checked radios in container.
+ * primary: the team ID (number).
+ * secondary: the second team ID for a play-in combo pick, or null.
  */
 function collectPicks(container) {
   const picks = new Map();
   container.querySelectorAll(".bracket-game").forEach((gameEl) => {
     const gameId = parseInt(gameEl.dataset.gameId);
     const checked = gameEl.querySelector("input[type=radio]:checked");
-    if (checked) picks.set(gameId, parseInt(checked.value));
+    if (checked) {
+      const val = checked.value;
+      if (val.includes(":")) {
+        const parts = val.split(":");
+        picks.set(gameId, { primary: parseInt(parts[0]), secondary: parseInt(parts[1]) });
+      } else {
+        picks.set(gameId, { primary: parseInt(val), secondary: null });
+      }
+    }
   });
   return picks;
 }
