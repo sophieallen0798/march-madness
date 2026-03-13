@@ -100,20 +100,6 @@
 /* ── Misc ─────────────────────────────────────────────────── */
 a.navbar-brand {
   white-space: normal;
-  word-break: keep-all;
-  /* Two-line clamp compatible across browsers */
-  display: inline-block;
-  line-height: 1.1em;
-  max-height: calc(1.1em * 2);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  vertical-align: middle;
-  /* Keep visible and avoid collapsing in flex layouts */
-  flex: 0 1 auto;
-  min-width: 72px;
-  max-width: 60%;
-  position: relative;
-  z-index: 2;
 }
 a { color: #0077cc; }
 .btn-primary { color: #fff; background-color: #1b6ec2; border-color: #1861ac; }

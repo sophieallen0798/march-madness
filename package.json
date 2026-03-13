@@ -3,6 +3,10 @@
     "sass": "^1.97.3"
   },
   "devDependencies": {
-    "supabase": "^2.76.16"
+    "supabase": "^2.76.16",
+    "serve": "^14.2.0"
+  },
+  "scripts": {
+    "preview": "serve docs -l 8000"
   }
 }
