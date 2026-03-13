@@ -34,7 +34,7 @@
             <div class="card-body p-4">
               <h3 class="card-title text-center mb-4">Enter Your Name</h3>
               <p class="text-center text-muted mb-4">
-                Enter your name to get started. Each person can only submit one bracket per tournament.
+                Each person can only submit 1 bracket per sport.
               </p>
               <form id="nameForm">
                 <div class="mb-3">
@@ -50,7 +50,81 @@
             </div>
           </div>
           <div class="text-center mt-3">
-            <small class="text-muted">If you already submitted a bracket, you'll need to use a different name.</small>
+            <small class="text-muted">If this is your first bracket, you should get asked a few more questions. If not, someone may have used the same name in the other sport, and you should choose a different one so your records don't get combined. Either that or my code is has bugs.</small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 1b: Extra profile info for new users -->
+    <div id="profileStep" class="d-none">
+      <div class="row justify-content-center">
+        <div class="col-md-6">
+          <div class="card shadow-sm">
+            <div class="card-body p-4">
+              <h3 class="card-title text-center mb-3">A Few More Details</h3>
+              <p class="text-center text-muted mb-4" id="profileWelcome"></p>
+              <form id="profileForm">
+
+                <!-- Office -->
+                <div class="mb-3">
+                  <label for="officeSelect" class="form-label fw-semibold">Office</label>
+                  <select id="officeSelect" class="form-select">
+                    <option value="" disabled selected>Select an office…</option>
+                    <option value="VHO">Vancouver</option>
+                    <option value="CGO">Calgary</option>
+                    <option value="SPO">Sparwood</option>
+                    <option value="FRO">Fording</option>
+                    <option value="EVO">Elkview</option>
+                    <option value="LCO">Line Creek</option>
+                    <option value="GHO">Greenhills</option>
+                    <option value="Other">Other…</option>
+                  </select>
+                  <input type="text" id="officeOther" class="form-control mt-2 d-none"
+                    placeholder="Enter your office name…" maxlength="100" />
+                </div>
+
+                <!-- Department -->
+                <div class="mb-4">
+                  <label for="departmentSelect" class="form-label fw-semibold">Department</label>
+                  <select id="departmentSelect" class="form-select">
+                    <option value="" disabled selected>Select a department…</option>
+                    <option value="DSA">Digital Systems - Apps</option>
+                    <option value="DSO">Digital Systems - Other</option>
+                    <option value="TF">Tax/Finance</option>
+                    <option value="HR">HR/HRIS</option>
+                    <option value="LOG">Logistics</option>
+                    <option value="ENG">Engineering</option>
+                    <option value="LEGAL">Legal</option>
+                    <option value="OTHER">Other…</option>
+                  </select>
+                  <input type="text" id="departmentOther" class="form-control mt-2 d-none"
+                    placeholder="Enter your department name…" maxlength="100" />
+                </div>
+
+                <!-- Buy-in -->
+                <div class="mb-4 p-3 bg-light rounded">
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="buyIn" role="switch" />
+                    <label class="form-check-label fw-semibold" for="buyIn">Buy-In</label>
+                  </div>
+                  <div class="form-text mt-1">Check this if you want to do the optional buy-in. All funds go to a charity of the winner's choice.</div>
+                  <div id="buyInDetails" class="d-none mt-3">
+                    <div class="alert alert-info py-2 mb-2 small">
+                      <strong>Payment required.</strong> Please e-transfer $10 to sophieallen@wealthsimple.me with your name in the message by Thursday March 19th. 
+                    </div>
+                    <label for="buyInEmail" class="form-label fw-semibold mb-1">Email address</label>
+                    <input type="email" id="buyInEmail" class="form-control"
+                      placeholder="you@example.com" maxlength="254" />
+                    <div class="form-text">To make sure I can contact you if you win!</div>
+                  </div>
+                </div>
+
+                <div class="d-grid">
+                  <button type="submit" class="btn btn-primary btn-lg" id="profileContinueBtn">Continue to Bracket</button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       </div>
@@ -113,6 +187,10 @@
     const params = new URLSearchParams(window.location.search);
     const sport = params.get("sport") || "basketball-men";
     let verifiedName = "";
+    let verifiedBuyIn = false;
+    let verifiedBuyInEmail = "";
+    let verifiedOffice = "";
+    let verifiedDepartment = "";
     let bracketGames = [];
 
     document.addEventListener("DOMContentLoaded", async () => {
@@ -167,11 +245,70 @@
           btn.disabled = false; btn.textContent = "Continue to Bracket";
           return;
         }
+
+        // Returning user (no bracket yet) — skip profile step
+        verifiedName = name;
+        await showBracket(name);
+        btn.disabled = false; btn.textContent = "Continue to Bracket";
+        return;
       }
 
+      // New user — show profile step before bracket
       verifiedName = name;
-      await showBracket(name);
+      document.getElementById("nameStep").classList.add("d-none");
+      document.getElementById("profileWelcome").textContent =
+        `Welcome, ${name}! Before you fill out your bracket, please tell us a bit about yourself.`;
+      document.getElementById("profileStep").classList.remove("d-none");
       btn.disabled = false; btn.textContent = "Continue to Bracket";
+    });
+
+    // ── Step 1b: "Other" dropdown reveal ───────────────────────────────────
+    document.getElementById("buyIn").addEventListener("change", (e) => {
+      document.getElementById("buyInDetails").classList.toggle("d-none", !e.target.checked);
+      if (!e.target.checked) document.getElementById("buyInEmail").value = "";
+    });
+    document.getElementById("officeSelect").addEventListener("change", (e) => {
+      document.getElementById("officeOther").classList.toggle("d-none", e.target.value !== "Other");
+    });
+    document.getElementById("departmentSelect").addEventListener("change", (e) => {
+      document.getElementById("departmentOther").classList.toggle("d-none", e.target.value !== "Other");
+    });
+
+    // ── Step 1b: Profile form submit ────────────────────────────────────────
+    document.getElementById("profileForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById("profileContinueBtn");
+
+      const officeVal = document.getElementById("officeSelect").value;
+      const officeOther = document.getElementById("officeOther").value.trim();
+      const deptVal = document.getElementById("departmentSelect").value;
+      const deptOther = document.getElementById("departmentOther").value.trim();
+
+      if (!officeVal) { showError("Please select an office."); return; }
+      if (officeVal === "Other" && !officeOther) { showError("Please enter your office name."); return; }
+      if (!deptVal) { showError("Please select a department."); return; }
+      if (deptVal === "Other" && !deptOther) { showError("Please enter your department name."); return; }
+
+      verifiedBuyIn = document.getElementById("buyIn").checked;
+      if (verifiedBuyIn) {
+        const emailVal = document.getElementById("buyInEmail").value.trim();
+        if (!emailVal) { showError("Please enter an email address for buy-in confirmation."); return; }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) { showError("Please enter a valid email address."); return; }
+        verifiedBuyInEmail = emailVal;
+      } else {
+        verifiedBuyInEmail = "";
+      }
+      verifiedOffice = officeVal === "Other" ? officeOther : officeVal;
+      verifiedDepartment = deptVal === "Other" ? deptOther : deptVal;
+
+      document.getElementById("profileStep").classList.add("d-none");
+      btn.disabled = true;
+      btn.textContent = "Loading…";
+
+      await showBracket(verifiedName);
+
+      btn.disabled = false;
+      btn.textContent = "Continue to Bracket";
     });
 
     async function showBracket(name) {
@@ -275,7 +412,13 @@ console.log("Games:", games);
         } else {
           const { data: newUser, error: uErr } = await supabase
             .from("app_users")
-            .insert({ name: verifiedName })
+            .insert({
+              name: verifiedName,
+              buy_in: verifiedBuyIn,
+              buy_in_email: verifiedBuyInEmail,
+              office: verifiedOffice,
+              department: verifiedDepartment,
+            })
             .select("id")
             .single();
           if (uErr) throw uErr;

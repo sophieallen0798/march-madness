@@ -12,7 +12,6 @@
 
 <body>
 
-  <!-- ── Navigation (included) ───────────────────────────────── -->
   <script src="js/include.js" data-include="header"></script>
 
   <!-- ── Main Content ────────────────────────────────────────── -->
@@ -21,7 +20,8 @@
 
       <div class="text-center mt-5">
         <h1 class="display-3">March Madness Tournament</h1>
-        <p class="lead">Fill out brackets for both Men's and Women's Basketball and compete with your coworkers!</p>
+        <p class="lead">This is for everyone to have fun and meet someone new. You can have a good time if you've never watched a sport once.</p>
+        <p>Vancouver office: Join us Thursday at 4:00 at Moose's Downunder to enjoy some snacks and drinks provided by the social committee and optionally watch a March Madness game.</p>
 
         <div class="row mt-5 g-4">
           <div class="col-md-6">
@@ -30,22 +30,28 @@
                 <h3>Submit Brackets</h3>
               </div>
               <div class="card-body">
-                <p>Submit your predictions for the tournament</p>
-                <a href="submit-bracket.html?sport=basketball-women" class="btn btn-primary me-2">Submit Women's
-                  Bracket</a>
-                <a href="submit-bracket.html?sport=basketball-men" class="btn btn-primary">Submit Men's Bracket</a>
+                <p class="card-text">Submit your predictions for the tournament</p>
+                <div class="card-button-container d-flex flex-column gap-2 align-items-stretch w-100">
+                  <a href="submit-bracket.html?sport=basketball-women" class="btn btn-primary">Submit Women's
+                    Bracket</a>
+                  <a href="submit-bracket.html?sport=basketball-men" class="btn btn-primary">Submit Men's Bracket</a>
+                </div>
               </div>
             </div>
           </div>
           <div class="col-md-6">
-            <div class="card h-100 border-info">
-              <div class="card-header bg-info text-white">
+            <div class="card h-100" style="border-color: gold;">
+              <div class="card-header text-white" style="background-color: gold;  border-color: gold;">
                 <h3>View Standings</h3>
               </div>
               <div class="card-body">
-                <p>See how everyone's picks are doing</p>
-                <a href="standings.html?sport=basketball-women" class="btn btn-outline-info me-2">Women's Standings</a>
-                <a href="standings.html?sport=basketball-men" class="btn btn-outline-primary">Men's Standings</a>
+                <p class="card-text">See how everyone's picks are doing</p>
+                <div class="card-button-container d-flex flex-column gap-2 align-items-stretch w-100">
+                  <a href="standings.html?sport=overall" class="btn btn-outline-primary">Overall Standings</a>
+                  <a href="standings.html?sport=basketball-women" class="btn btn-outline-info">Women's
+                    Standings</a>
+                  <a href="standings.html?sport=basketball-men" class="btn btn-outline-primary">Men's Standings</a>
+                </div>
               </div>
             </div>
           </div>
@@ -77,8 +83,9 @@
         </div>
 
         <p class="text-muted">
-          Unofficial bracket pool created for entertainment purposes. Not affiliated with or endorsed by the NCAA, any universities, EVR, Glencore, Rio Tinto, Anglo American, or any other
-          mining giants that may come into the picture. All team names, logos, and trademarks belong to their respective owners.
+          Unofficial bracket pool created for entertainment purposes. Not affiliated with or endorsed by the NCAA, any
+          universities, EVR, Glencore, Teck, Rio Tinto, Anglo American, or any other mining giants that may come into
+          the picture. All team names, logos, and trademarks belong to their respective owners.
         </p>
 
         <div class="alert alert-warning mt-5 d-none" id="admin-alert">

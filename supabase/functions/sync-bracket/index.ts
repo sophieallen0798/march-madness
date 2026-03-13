@@ -36,14 +36,15 @@ Deno.serve(async (req: Request) => {
   // Use a dedicated admin access code for function calls (separate from SITE_ACCESS_CODE used for site gating)
   const adminCodeEnv = (Deno.env.get("ADMIN_ACCESS_CODE") ?? "").trim();
 
-  // Attempt to read code from request body (support JSON or urlencoded form)
+  // ── Parse body once (body stream can only be read once) ─────────────────
+  let parsedBody: any = null;
   let adminCodeBody = "";
   try {
     const raw = await req.text();
     if (raw) {
       try {
-        const parsed = JSON.parse(raw);
-        adminCodeBody = (parsed?.code ?? "").toString();
+        parsedBody = JSON.parse(raw);
+        adminCodeBody = (parsedBody?.code ?? "").toString();
       } catch {
         // Not JSON — try urlencoded
         try {
@@ -74,20 +75,14 @@ Deno.serve(async (req: Request) => {
     });
     const { data: { user }, error: userErr } = await userClient.auth.getUser();
     if (userErr || !user) return jsonError("Invalid token", 401);
-    if (!adminEmails.includes(user.email?.toLowerCase() ?? "")) {
-      return jsonError("Forbidden: not an admin", 403);
-    }
   }
 
-  // ── Parse body ────────────────────────────────────────────────────────────
+  // ── Extract sport/year from already-parsed body ───────────────────────────
   let sport = "basketball-men";
   let year = 2025;
-  try {
-    const body = await req.json();
-    if (body.sport) sport = body.sport;
-    if (body.year) year = Number(body.year);
-  } catch {
-    // defaults are fine
+  if (parsedBody) {
+    if (parsedBody.sport) sport = parsedBody.sport;
+    if (parsedBody.year) year = Number(parsedBody.year);
   }
 
   // ── Fetch from NCAA proxy API ─────────────────────────────────────────────

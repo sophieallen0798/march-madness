@@ -1,176 +1,338 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Standings – March Madness</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
   <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" />
   <script>if (!localStorage.getItem("site_access")) location.replace("access.html");</script>
 </head>
+
 <body>
 
-<script src="js/include.js" data-include="header"></script>
+  <script src="js/include.js" data-include="header"></script>
 
-<div class="container mt-4">
-  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-    <h1>March Madness Standings</h1>
-    <div class="btn-group" id="sportToggle">
-      <a href="standings.html?sport=basketball-men"   id="btn-men"   class="btn btn-outline-primary">Men's</a>
-      <a href="standings.html?sport=basketball-women" id="btn-women" class="btn btn-outline-info">Women's</a>
+  <div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+      <h1>March Madness Standings</h1>
+      <div class="d-flex align-items-center gap-3 flex-wrap">
+        <div class="btn-group" id="sportToggle">
+          <a href="standings.html?sport=overall" id="btn-overall" class="btn btn-outline-primary">Overall</a>
+          <a href="standings.html?sport=basketball-women" id="btn-women" class="btn btn-outline-info">Women's</a>
+          <a href="standings.html?sport=basketball-men" id="btn-men" class="btn btn-outline-info">Men's</a>
+        </div>
+        <div class="form-check form-switch mb-0">
+          <input class="form-check-input" type="checkbox" id="buyInToggle" role="switch">
+          <label class="form-check-label" for="buyInToggle">Buy-in only</label>
+        </div>
+      </div>
     </div>
+
+    <div id="loadingMsg" class="text-center py-4">
+      <div class="spinner-border text-primary" role="status"></div>
+      <p class="mt-2 text-muted">Loading standings…</p>
+    </div>
+
+    <div id="standings-content" class="d-none"></div>
   </div>
 
-  <div id="loadingMsg" class="text-center py-4">
-    <div class="spinner-border text-primary" role="status"></div>
-    <p class="mt-2 text-muted">Loading standings…</p>
-  </div>
+  <script src="js/include.js" data-include="footer"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const sport = params.get("sport") || "overall";
+    const isOverall = sport === "overall";
+    console.log("[DEBUG] standings page load - location:", location.href, "sport param:", params.get("sport"));
 
-  <div id="standings-content" class="d-none"></div>
-</div>
+    let allStandingsData = [];
 
-<script src="js/include.js" data-include="footer"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js"></script>
-<script src="js/auth.js"></script>
-<script>
-  const params = new URLSearchParams(window.location.search);
-  const sport  = params.get("sport") || "basketball-men";
+    document.addEventListener("DOMContentLoaded", async () => {
+      if (window.includeReady && typeof window.includeReady.then === 'function') await window.includeReady;
+      await updateNav();
 
-  document.addEventListener("DOMContentLoaded", async () => {
-    if (window.includeReady && typeof window.includeReady.then === 'function') await window.includeReady;
-    await updateNav();
-
-    // Highlight active sport button
-    if (sport === "basketball-men") {
-      document.getElementById("btn-men").classList.replace("btn-outline-primary", "btn-primary");
-    } else {
-      document.getElementById("btn-women").classList.replace("btn-outline-info", "btn-info");
-    }
-
-    await loadStandings();
-  });
-
-  async function loadStandings() {
-    const loadingEl  = document.getElementById("loadingMsg");
-    const contentEl  = document.getElementById("standings-content");
-
-    try {
-      // Fetch all brackets for this sport/year with user info
-      const { data: brackets, error: bErr } = await supabase
-        .from("brackets")
-        .select("id, bracket_name, submitted_date, total_points, app_users(name)")
-        .eq("sport", sport)
-        .eq("year", TOURNAMENT_YEAR)
-        .order("total_points", { ascending: false })
-        .order("submitted_date", { ascending: true });
-
-      if (bErr) throw bErr;
-
-      // Fetch all decided games so we can compute points_possible
-      const { data: decidedGames, error: gErr } = await supabase
-        .from("games")
-        .select("id, round, team1_id, team2_id, winner_id")
-        .eq("sport", sport)
-        .eq("year", TOURNAMENT_YEAR)
-        .not("winner_id", "is", null);
-
-      if (gErr) throw gErr;
-
-      // Build eliminated-team set
-      const eliminated = new Set();
-      for (const g of (decidedGames ?? [])) {
-        if (g.team1_id && g.team1_id !== g.winner_id) eliminated.add(g.team1_id);
-        if (g.team2_id && g.team2_id !== g.winner_id) eliminated.add(g.team2_id);
+      // Highlight active sport button
+      if (sport === "basketball-women") {
+        document.getElementById("btn-women").classList.replace("btn-outline-info", "btn-info");
+      } else if (sport === "basketball-men") {
+        document.getElementById("btn-men").classList.replace("btn-outline-info", "btn-info");
+      } else {
+        document.getElementById("btn-overall").classList.replace("btn-outline-primary", "btn-primary");
       }
 
-      // Fetch all picks for these brackets
-      const bracketIds = (brackets ?? []).map((b) => b.id);
-      let allPicks = [];
-      if (bracketIds.length) {
-        const { data: picks, error: pErr } = await supabase
-          .from("picks")
-          .select("bracket_id, game_id, picked_team_id, games(round, winner_id, team1_id, team2_id)")
-          .in("bracket_id", bracketIds);
-        if (pErr) throw pErr;
-        allPicks = picks ?? [];
-      }
+      document.getElementById("buyInToggle").addEventListener("change", () => renderStandings(allStandingsData));
 
-      // Fetch championship game id (round = 7) to get champion pick
-      const { data: champGames } = await supabase
-        .from("games")
-        .select("id")
-        .eq("sport", sport)
-        .eq("year", TOURNAMENT_YEAR)
-        .eq("round", 7)
-        .limit(1);
-      const champGameId = champGames?.[0]?.id ?? null;
+      await loadStandings();
+    });
 
-      // Fetch all teams for champion name lookup
-      const { data: allTeams } = await supabase
-        .from("teams")
-        .select("id, name_short")
-        .eq("sport", sport)
-        .eq("year", TOURNAMENT_YEAR);
-      const teamById = new Map((allTeams ?? []).map((t) => [t.id, t]));
+    async function loadStandings() {
+      const loadingEl = document.getElementById("loadingMsg");
+      const contentEl = document.getElementById("standings-content");
 
-      // Group picks by bracket
-      const picksByBracket = new Map();
-      for (const p of allPicks) {
-        if (!picksByBracket.has(p.bracket_id)) picksByBracket.set(p.bracket_id, []);
-        picksByBracket.get(p.bracket_id).push(p);
-      }
+      try {
+        // Fetch brackets — all sports for overall, filtered otherwise
+        let bracketQuery = supabase
+          .from("brackets")
+          .select("id, user_id, bracket_name, sport, submitted_date, total_points, app_users(name, office, department, buy_in)")
+          .eq("year", TOURNAMENT_YEAR);
+        if (!isOverall) {
+          bracketQuery = bracketQuery
+            .eq("sport", sport)
+            .order("total_points", { ascending: false })
+            .order("submitted_date", { ascending: true });
+        }
+        const { data: brackets, error: bErr } = await bracketQuery;
+        if (bErr) throw bErr;
 
-      // Build standings rows
-      const standings = (brackets ?? []).map((b, idx) => {
-        const picks    = picksByBracket.get(b.id) ?? [];
-        let possible   = 0;
-        let champPick  = "—";
+        // Fetch decided games — all sports for overall, filtered otherwise
+        let gamesQuery = supabase
+          .from("games")
+          .select("id, round, team1_id, team2_id, winner_id")
+          .eq("year", TOURNAMENT_YEAR)
+          .not("winner_id", "is", null);
+        if (!isOverall) {
+          gamesQuery = gamesQuery.eq("sport", sport);
+        }
+        const { data: decidedGames, error: gErr } = await gamesQuery;
+        if (gErr) throw gErr;
 
-        for (const p of picks) {
-          const game = p.games;
-          if (!game) continue;
-          const pts = Math.pow(2, game.round - 1);
-          if (!game.winner_id) {
-            if (!eliminated.has(p.picked_team_id)) possible += pts;
-          } else {
-            if (p.picked_team_id === game.winner_id) possible += pts;
-          }
-          if (p.game_id === champGameId) {
-            champPick = teamById.get(p.picked_team_id)?.name_short ?? "—";
-          }
+        // Build eliminated-team set
+        const eliminated = new Set();
+        for (const g of (decidedGames ?? [])) {
+          if (g.team1_id && g.team1_id !== g.winner_id) eliminated.add(g.team1_id);
+          if (g.team2_id && g.team2_id !== g.winner_id) eliminated.add(g.team2_id);
         }
 
-        const submittedDate = new Date(b.submitted_date).toLocaleDateString("en-US", {
-          month: "short", day: "numeric", year: "numeric"
-        });
-        const userName = b.app_users?.name ?? "Unknown";
+        // Fetch picks for all relevant brackets
+        const bracketIds = (brackets ?? []).map((b) => b.id);
+        let allPicks = [];
+        if (bracketIds.length) {
+          const { data: picks, error: pErr } = await supabase
+            .from("picks")
+            .select("bracket_id, game_id, picked_team_id, games(round, winner_id, team1_id, team2_id)")
+            .in("bracket_id", bracketIds);
+          if (pErr) throw pErr;
+          allPicks = picks ?? [];
+        }
 
-        return { ...b, rank: idx + 1, possible, champPick, submittedDate, userName };
-      });
+        // Group picks by bracket
+        const picksByBracket = new Map();
+        for (const p of allPicks) {
+          if (!picksByBracket.has(p.bracket_id)) picksByBracket.set(p.bracket_id, []);
+          picksByBracket.get(p.bracket_id).push(p);
+        }
 
-      loadingEl.classList.add("d-none");
-      contentEl.classList.remove("d-none");
+        let standings;
 
-      if (!standings.length) {
-        const sportLabel = sport === "basketball-men" ? "Men's" : "Women's";
-        contentEl.innerHTML = `
-          <div class="alert alert-info">
-            <strong>No brackets submitted yet for ${sportLabel} Basketball.</strong>
-            <p>Be the first to submit your bracket!</p>
-            <a href="submit-bracket.html?sport=${sport}" class="btn ${sport === "basketball-men" ? "btn-primary" : "btn-info"}">Submit Bracket</a>
-          </div>`;
+        if (isOverall) {
+          // Group brackets by user, combining men's + women's scores
+          const userMap = new Map();
+          for (const b of (brackets ?? [])) {
+            const uid = b.user_id;
+            if (!userMap.has(uid)) {
+              userMap.set(uid, {
+                userId: uid,
+                userName: b.app_users?.name ?? "Unknown",
+                office: b.app_users?.office ?? "",
+                department: b.app_users?.department ?? "",
+                buyIn: b.app_users?.buy_in ?? false,
+                menPoints: null,
+                womenPoints: null,
+                menPossible: 0,
+                womenPossible: 0,
+                earliestDate: b.submitted_date,
+              });
+            }
+            const user = userMap.get(uid);
+
+            // Compute possible points for this bracket
+            let possible = 0;
+            for (const p of (picksByBracket.get(b.id) ?? [])) {
+              const game = p.games;
+              if (!game) continue;
+              const pts = Math.pow(2, game.round - 1);
+              if (!game.winner_id) {
+                if (!eliminated.has(p.picked_team_id)) possible += pts;
+              } else {
+                if (p.picked_team_id === game.winner_id) possible += pts;
+              }
+            }
+
+            if (b.sport === "basketball-men") {
+              user.menPoints = b.total_points;
+              user.menPossible = possible;
+            } else if (b.sport === "basketball-women") {
+              user.womenPoints = b.total_points;
+              user.womenPossible = possible;
+            }
+            if (new Date(b.submitted_date) < new Date(user.earliestDate)) {
+              user.earliestDate = b.submitted_date;
+            }
+          }
+
+          standings = Array.from(userMap.values()).map(u => ({
+            ...u,
+            total_points: (u.menPoints ?? 0) + (u.womenPoints ?? 0),
+            possible: u.menPossible + u.womenPossible,
+          }));
+          standings.sort((a, b) => {
+            if (b.total_points !== a.total_points) return b.total_points - a.total_points;
+            return new Date(a.earliestDate) - new Date(b.earliestDate);
+          });
+          standings.forEach((s, i) => { s.rank = i + 1; });
+
+        } else {
+          // Sport-specific standings — fetch champion game + teams for champ pick display
+          const { data: champGames } = await supabase
+            .from("games")
+            .select("id")
+            .eq("sport", sport)
+            .eq("year", TOURNAMENT_YEAR)
+            .eq("round", 7)
+            .limit(1);
+          const champGameId = champGames?.[0]?.id ?? null;
+
+          const { data: allTeams } = await supabase
+            .from("teams")
+            .select("id, name_short")
+            .eq("sport", sport)
+            .eq("year", TOURNAMENT_YEAR);
+          const teamById = new Map((allTeams ?? []).map((t) => [t.id, t]));
+
+          standings = (brackets ?? []).map((b, idx) => {
+            const picks = picksByBracket.get(b.id) ?? [];
+            let possible = 0;
+            let champPick = "—";
+
+            for (const p of picks) {
+              const game = p.games;
+              if (!game) continue;
+              const pts = Math.pow(2, game.round - 1);
+              if (!game.winner_id) {
+                if (!eliminated.has(p.picked_team_id)) possible += pts;
+              } else {
+                if (p.picked_team_id === game.winner_id) possible += pts;
+              }
+              if (p.game_id === champGameId) {
+                champPick = teamById.get(p.picked_team_id)?.name_short ?? "—";
+              }
+            }
+
+            const submittedDate = new Date(b.submitted_date).toLocaleDateString("en-US", {
+              month: "short", day: "numeric", year: "numeric"
+            });
+
+            return {
+              ...b,
+              rank: idx + 1,
+              possible,
+              champPick,
+              submittedDate,
+              userName: b.app_users?.name ?? "Unknown",
+              office: b.app_users?.office ?? "",
+              department: b.app_users?.department ?? "",
+              buyIn: b.app_users?.buy_in ?? false,
+            };
+          });
+        }
+
+        allStandingsData = standings;
+        loadingEl.classList.add("d-none");
+        contentEl.classList.remove("d-none");
+        renderStandings(standings);
+
+      } catch (err) {
+        document.getElementById("loadingMsg").classList.add("d-none");
+        const contentEl = document.getElementById("standings-content");
+        contentEl.classList.remove("d-none");
+        contentEl.innerHTML = `<div class="alert alert-danger"><strong>Error loading standings:</strong> ${escHtml(err.message)}</div>`;
+      }
+    }
+
+    function renderStandings(standings) {
+      const contentEl = document.getElementById("standings-content");
+      const buyInOnly = document.getElementById("buyInToggle").checked;
+      const filtered = buyInOnly ? standings.filter(s => s.buyIn) : standings;
+
+      if (!filtered.length) {
+        const label = sport === "basketball-women" ? "Women's" : sport === "basketball-men" ? "Men's" : "Overall";
+        if (buyInOnly) {
+          contentEl.innerHTML = `<div class="alert alert-info">No buy-in participants found${label !== "Overall" ? ` for ${label} Basketball` : ""}.</div>`;
+        } else {
+          contentEl.innerHTML = `
+            <div class="alert alert-info">
+              <strong>No brackets submitted yet for ${label}${label !== "Overall" ? " Basketball" : ""}.</strong>
+              <p>Be the first to submit your bracket!</p>
+              ${sport !== "overall" ? `<a href="submit-bracket.html?sport=${sport}" class="btn ${sport === "basketball-men" ? "btn-primary" : "btn-info"}">Submit Bracket</a>` : ""}
+            </div>`;
+        }
         return;
       }
 
+      if (isOverall) {
+        renderOverallTable(filtered, contentEl);
+      } else {
+        renderSportTable(filtered, contentEl);
+      }
+    }
+
+    function rankIcon(rank) {
+      if (rank === 1) return '<i class="bi bi-trophy-fill text-warning"></i>';
+      if (rank === 2) return '<i class="bi bi-trophy text-secondary"></i>';
+      if (rank === 3) return '<i class="bi bi-medal-fill text-muted"></i>';
+      return '';
+    }
+
+    function renderOverallTable(standings, contentEl) {
       const rows = standings.map((s) => {
-        const rankIcon = s.rank === 1 ? "🏆" : s.rank === 2 ? "🥈" : s.rank === 3 ? "🥉" : "";
+        const rowClass = s.rank === 1 ? "table-warning" : "";
+        const menPts = s.menPoints !== null ? `<strong>${s.menPoints}</strong>` : '<span class="text-muted">—</span>';
+        const womenPts = s.womenPoints !== null ? `<strong>${s.womenPoints}</strong>` : '<span class="text-muted">—</span>';
+        return `<tr class="${rowClass}">
+          <td><strong>${rankIcon(s.rank)} ${s.rank}</strong></td>
+          <td>${escHtml(s.userName)}</td>
+          <td>${escHtml(s.office)}</td>
+          <td>${escHtml(s.department)}</td>
+          <td>${menPts}</td>
+          <td>${womenPts}</td>
+          <td><strong>${s.total_points}</strong></td>
+          <td>${s.possible}</td>
+        </tr>`;
+      }).join("");
+
+      contentEl.innerHTML = `
+        <div class="card">
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-striped table-hover">
+                <thead class="table-dark">
+                  <tr>
+                    <th>Rank</th><th>User</th><th>Office</th><th>Department</th>
+                    <th>Men's Pts</th><th>Women's Pts</th><th>Total</th><th>Possible</th>
+                  </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <p class="text-muted mt-3"><strong>Scoring:</strong> Points double each round (1, 2, 4, 8, 16, 32)</p>`;
+    }
+
+    function renderSportTable(standings, contentEl) {
+      const rows = standings.map((s) => {
         const rowClass = s.rank === 1 ? "table-warning" : "";
         return `<tr class="${rowClass}">
-          <td><strong>${rankIcon} ${s.rank}</strong></td>
+          <td><strong>${rankIcon(s.rank)} ${s.rank}</strong></td>
           <td>${escHtml(s.bracket_name)}</td>
           <td>${escHtml(s.userName)}</td>
+          <td>${escHtml(s.office)}</td>
+          <td>${escHtml(s.department)}</td>
           <td>${escHtml(s.champPick)}</td>
           <td><strong>${s.total_points}</strong></td>
           <td>${s.possible}</td>
@@ -186,8 +348,8 @@
               <table class="table table-striped table-hover">
                 <thead class="table-dark">
                   <tr>
-                    <th>Rank</th><th>Bracket</th><th>User</th><th>Champion Pick</th>
-                    <th>Points</th><th>Possible</th><th>Submitted</th><th></th>
+                    <th>Rank</th><th>Bracket</th><th>User</th><th>Office</th><th>Department</th>
+                    <th>Champion Pick</th><th>Points</th><th>Possible</th><th>Submitted</th><th></th>
                   </tr>
                 </thead>
                 <tbody>${rows}</tbody>
@@ -196,17 +358,12 @@
           </div>
         </div>
         <p class="text-muted mt-3"><strong>Scoring:</strong> Points double each round (1, 2, 4, 8, 16, 32)</p>`;
-
-    } catch (err) {
-      document.getElementById("loadingMsg").classList.add("d-none");
-      contentEl.classList.remove("d-none");
-      contentEl.innerHTML = `<div class="alert alert-danger"><strong>Error loading standings:</strong> ${escHtml(err.message)}</div>`;
     }
-  }
 
-  function escHtml(str) {
-    return String(str ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-  }
-</script>
+    function escHtml(str) {
+      return String(str ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+  </script>
 </body>
+
 </html>
