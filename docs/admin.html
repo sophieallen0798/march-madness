@@ -101,6 +101,7 @@
 <script src="js/auth.js"></script>
 <script>
   document.addEventListener("DOMContentLoaded", async () => {
+    if (window.includeReady && typeof window.includeReady.then === 'function') await window.includeReady;
     await updateNav();
 
     // Allow admin access via local flag set by login.html (client-side admin flow)
@@ -195,19 +196,21 @@
     el.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
-  function syncBracket(sport) {
+  async function syncBracket(sport) {
     const btn = event.currentTarget;
-    runWithSpinner(btn, async () => {
+    console.log(`Starting sync for ${sport} ${TOURNAMENT_YEAR}...`);
+    await runWithSpinner(btn, async () => {
       // Always call the server-side Edge Function which proxies the NCAA API.
-      return callEdgeFunction("sync-bracket", { sport, year: TOURNAMENT_YEAR });
+      return await callEdgeFunction("sync-bracket", { sport, year: TOURNAMENT_YEAR });
     });
   }
 
-  function updateScores(sport) {
+  async function updateScores(sport) {
     const btn = event.currentTarget;
-    runWithSpinner(btn, async () => {
+    console.log(`Starting score update for ${sport} ${TOURNAMENT_YEAR}...`);
+    await runWithSpinner(btn, async () => {
       // Always call the server-side Edge Function which proxies the NCAA scoreboard.
-      return callEdgeFunction("update-scores", { sport, year: TOURNAMENT_YEAR });
+      return await callEdgeFunction("update-scores", { sport, year: TOURNAMENT_YEAR });
     });
   }
 </script>

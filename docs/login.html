@@ -46,6 +46,7 @@
 <script src="js/auth.js"></script>
 <script>
   document.addEventListener("DOMContentLoaded", async () => {
+    if (window.includeReady && typeof window.includeReady.then === 'function') await window.includeReady;
     await updateNav();
     // If already signed in, redirect directly to admin panel
     const user = await getCurrentUser();

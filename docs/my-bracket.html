@@ -77,6 +77,7 @@
   let bracketGames = [];
 
   document.addEventListener("DOMContentLoaded", async () => {
+    if (window.includeReady && typeof window.includeReady.then === 'function') await window.includeReady;
     await updateNav();
 
     if (sport === "basketball-men") {

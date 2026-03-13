@@ -88,6 +88,7 @@ async function loadBracketData(sport, year = TOURNAMENT_YEAR) {
       .eq("sport", sport)
       .eq("year", year),
   ]);
+  console.log(`Fetched ${gamesResp.data?.length ?? 0} games and ${teamsResp.data?.length ?? 0} teams for ${sport} ${year}`);
 
   if (gamesResp.error) throw new Error(gamesResp.error.message);
   if (teamsResp.error) throw new Error(teamsResp.error.message);

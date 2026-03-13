@@ -63,3 +63,23 @@ async function signOut() {
   await supabase.auth.signOut();
   window.location.replace("index.html");
 }
+
+// Diagnostic handler: log unhandled rejections that match the extension-messaging
+// pattern so you can identify the extension at fault. We do NOT suppress the
+// rejection here — the browser will still show the error — but we print a
+// clearer diagnostic to help debugging (extension id often appears in the stack).
+window.addEventListener('unhandledrejection', (e) => {
+  try {
+    const reason = e.reason;
+    const msg = reason && reason.message ? reason.message.toString() : String(reason);
+    if (msg.includes('A listener indicated an asynchronous response by returning true')) {
+      console.error('Extension messaging async-response error detected. Full reason:', reason);
+      if (reason && reason.stack) console.error('Stack trace (may include extension id):', reason.stack);
+      // Also log the event object for inspection in devtools.
+      console.error('UnhandledRejection event:', e);
+      // Do not call e.preventDefault() — we are not suppressing the error.
+    }
+  } catch (err) {
+    console.error('Error while logging unhandledrejection diagnostic:', err);
+  }
+});

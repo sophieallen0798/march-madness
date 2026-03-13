@@ -17,7 +17,7 @@ const SUPABASE_ANON_KEY = "sb_publishable_SCi5yb5NEhucwFQqK0JlGQ_cDesbTPr";
 const ADMIN_EMAILS = ["sophieallen0798@gmail.com"];
 
 // Year of the current tournament
-const TOURNAMENT_YEAR = 2025;
+const TOURNAMENT_YEAR = 2026;
 
 //                 import { createClient } from '@supabase/supabase-js'
 // const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY)

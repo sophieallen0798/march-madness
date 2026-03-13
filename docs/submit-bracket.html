@@ -116,6 +116,7 @@
     let bracketGames = [];
 
     document.addEventListener("DOMContentLoaded", async () => {
+      if (window.includeReady && typeof window.includeReady.then === 'function') await window.includeReady;
       await updateNav();
 
       document.getElementById("pageTitle").textContent =
@@ -181,7 +182,8 @@
         const { games } = await loadBracketData(sport);
 
         bracketGames = games;
-
+        console.log(`Loaded ${games.length} games for ${sport} ${TOURNAMENT_YEAR}`);
+console.log("Games:", games);
         if (!games.length) {
           document.getElementById("loadingMsg").classList.add("d-none");
           showError("Tournament data not yet available. Please check back later or contact the admin.");

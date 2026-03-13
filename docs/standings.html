@@ -39,6 +39,7 @@
   const sport  = params.get("sport") || "basketball-men";
 
   document.addEventListener("DOMContentLoaded", async () => {
+    if (window.includeReady && typeof window.includeReady.then === 'function') await window.includeReady;
     await updateNav();
 
     // Highlight active sport button
