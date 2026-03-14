@@ -284,9 +284,7 @@
       const deptVal = document.getElementById("departmentSelect").value;
       const deptOther = document.getElementById("departmentOther").value.trim();
 
-      if (!officeVal) { showError("Please select an office."); return; }
       if (officeVal === "Other" && !officeOther) { showError("Please enter your office name."); return; }
-      if (!deptVal) { showError("Please select a department."); return; }
       if (deptVal === "Other" && !deptOther) { showError("Please enter your department name."); return; }
 
       verifiedBuyIn = document.getElementById("buyIn").checked;
@@ -298,8 +296,8 @@
       } else {
         verifiedBuyInEmail = "";
       }
-      verifiedOffice = officeVal === "Other" ? officeOther : officeVal;
-      verifiedDepartment = deptVal === "Other" ? deptOther : deptVal;
+      verifiedOffice = officeVal === "Other" ? officeOther : (officeVal || "Unknown");
+      verifiedDepartment = deptVal === "Other" ? deptOther : (deptVal || "Unknown");
 
       document.getElementById("profileStep").classList.add("d-none");
       btn.disabled = true;
