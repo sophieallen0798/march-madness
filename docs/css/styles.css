@@ -163,3 +163,23 @@ a { color: #0077cc; }
   flex-direction: column; 
   align-items: center; 
 }
+
+.nav-last-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-right: 1rem;
+  white-space: nowrap;
+}
+
+.nav-last-refresh svg {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 576px) {
+  .nav-last-refresh {
+    margin-right: 0;
+    margin-bottom: 0.5rem;
+    white-space: normal;
+  }
+}
