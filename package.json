@@ -11,6 +11,8 @@
   },
   "scripts": {
     "preview": "serve docs -l 8000",
+    "build:css": "sass src/scss/custom.scss docs/css/bootstrap-custom.css --no-source-map --style=compressed",
+    "watch:css": "sass --watch src/scss/custom.scss:docs/css/bootstrap-custom.css",
     "test": "jest"
   },
   "jest": {

@@ -1,28 +1,38 @@
 /* March Madness – shared styles */
 :root {
   --blue-color: #3056BF; 
+  --blue-color-light: #7c98ce;
+  --blue-color-dark: #133287;
   --gold-dark: #daa520;
   --gold-light: #e3d5a8;
 }
 /* ── Bracket shell ────────────────────────────────────────── */
 .bracket-shell {
   width: 100%;
-  overflow: hidden;
+  overflow: visible;
 }
 .bracket-shell .card-body {
-  overflow: hidden;
+  overflow: visible;
   padding: 0;
 }
 .bracket-scroll {
   width: 100%;
-  height: 78vh;
-  overflow: auto;
-  overscroll-behavior: contain;
+  height: auto;
+  max-height: none;
+  overflow: visible;
+  overscroll-behavior: auto;
 }
 .bracket-zoom-surface {
   transform-origin: top left;
   display: inline-block;
+
 }
+
+.bracket-board {
+    border-color: var(--blue-color);
+  border-width: 10px;
+}
+
 .bracket-board-col {
   min-width: 1200px;
 }
@@ -79,6 +89,11 @@
 .pick-incorrect { background-color: #f8d7da !important; }
 .pick-pending   { background-color: #fff3cd !important; }
 
+.pick-percent {
+  min-width: 2.75rem;
+  text-align: right;
+}
+
 /* ── Legend badges ────────────────────────────────────────── */
 .badge-legend {
   display: inline-block;
@@ -107,6 +122,41 @@ a.navbar-brand {
 }
 a { color: #0077cc; }
 .btn-primary { color: #fff; background-color: #1b6ec2; border-color: #1861ac; }
+
+.btn-primary {
+  background-color: var(--blue-color);
+  border-color: var(--blue-color);
+}
+
+.btn-primary:hover {
+  background-color: var(--blue-color-dark);
+  border-color: var(--blue-color-dark);
+}
+
+.btn-outline-secondary {
+  color: var(--blue-color);
+  border-color: var(--blue-color);
+}
+.btn-outline-primary {
+  border-color: var(--gold-dark);
+  color: black;
+  
+}
+.btn-outline-primary:hover {
+  color: white;
+  background-color: var(--gold-light);
+  border-color: var(--gold-light);
+}
+
+.btn-outline-secondary:hover {
+  color: white;
+  background-color: var(--blue-color-dark);
+  border-color: var(--blue-color-dark);
+}
+
+.table-dark {
+  background-color: var(--gold-light);
+}
 
 .card-button-container {
   display: flex;

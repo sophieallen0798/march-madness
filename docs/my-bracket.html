@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -8,141 +9,183 @@
   <link rel="stylesheet" href="css/styles.css" />
   <script>if (!localStorage.getItem("site_access")) location.replace("access.html");</script>
 </head>
+
 <body>
 
-<script src="js/include.js" data-include="header"></script>
+  <script src="js/include.js" data-include="header"></script>
 
-<div class="container-fluid">
-  <div class="d-flex justify-content-between align-items-center mb-4 mt-3 flex-wrap gap-2">
-    <h1 id="pageTitle">View Bracket</h1>
-    <div class="btn-group">
-      <a id="btn-men"   href="my-bracket.html?sport=basketball-men"   class="btn btn-outline-primary">Men's</a>
-      <a id="btn-women" href="my-bracket.html?sport=basketball-women" class="btn btn-outline-info">Women's</a>
-    </div>
-  </div>
-
-  <div id="errorMsg" class="alert alert-danger d-none mb-3"></div>
-
-  <div id="loadingMsg" class="text-center py-5">
-    <div class="spinner-border text-primary" role="status"></div>
-    <p class="mt-2 text-muted">Loading…</p>
-  </div>
-
-  <!-- Bracket selector and legend (shown once a bracket is selected) -->
-  <div id="bracketSelector" class="d-flex align-items-center gap-3 mb-3 flex-wrap d-none">
-    <label class="form-label mb-0 fw-semibold">Viewing:</label>
-    <select id="bracketSelect" class="form-select form-select-sm" style="max-width:300px;"></select>
-    <div class="ms-auto d-flex gap-2 align-items-center">
-      <span class="badge-legend pick-correct-legend">&nbsp;</span>   <small>Correct</small>
-      <span class="badge-legend pick-incorrect-legend">&nbsp;</span> <small>Incorrect</small>
-      <span class="badge-legend pick-pending-legend">&nbsp;</span>   <small>Pending</small>
-    </div>
-  </div>
-
-  <!-- No brackets yet -->
-  <div id="noBracketsMsg" class="d-none"></div>
-
-  <!-- Bracket viewer -->
-  <div id="bracketShell" class="card w-100 bracket-shell d-none">
-    <div class="card-body p-0">
-      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-3">
-        <div class="small text-muted">Scroll to navigate · Use zoom controls for detail</div>
-        <div class="btn-group btn-group-sm">
-          <button type="button" id="zoomOutBtn"   class="btn btn-outline-secondary">-</button>
-          <button type="button" id="zoomResetBtn" class="btn btn-outline-secondary">100%</button>
-          <button type="button" id="zoomInBtn"    class="btn btn-outline-secondary">+</button>
-        </div>
-      </div>
-      <div class="bracket-scroll" id="bracketScroll">
-        <div class="bracket-zoom-surface" id="bracketZoomSurface">
-          <div id="bracketContainer"></div>
-        </div>
+  <div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4 mt-3 flex-wrap gap-2">
+      <h1 id="pageTitle">View Bracket</h1>
+      <div class="btn-group">
+        <a id="btn-men" href="my-bracket.html?sport=basketball-men" class="btn btn-outline-secondary">Men's</a>
+        <a id="btn-women" href="my-bracket.html?sport=basketball-women" class="btn btn-outline-secondary">Women's</a>
       </div>
     </div>
+
+    <div id="errorMsg" class="alert alert-danger d-none mb-3"></div>
+
+    <div id="loadingMsg" class="text-center py-5">
+      <div class="spinner-border text-primary" role="status"></div>
+      <p class="mt-2 text-muted">Loading…</p>
+    </div>
+
+    <!-- Bracket selector and legend (shown once a bracket is selected) -->
+    <div id="bracketSelector" class="d-flex align-items-center gap-3 mb-3 flex-wrap d-none">
+      <label class="form-label mb-0 fw-semibold">Viewing:</label>
+      <select id="bracketSelect" class="form-select form-select-sm" style="max-width:300px;"></select>
+      <div class="ms-auto d-flex gap-2 align-items-center">
+        <span class="badge-legend pick-correct-legend">&nbsp;</span> <small>Correct</small>
+        <span class="badge-legend pick-incorrect-legend">&nbsp;</span> <small>Incorrect</small>
+        <span class="badge-legend pick-pending-legend">&nbsp;</span> <small>Pending</small>
+      </div>
+    </div>
+
+    <!-- No brackets yet -->
+    <div id="noBracketsMsg" class="d-none"></div>
+
+    <!-- Bracket viewer -->
+    <div id="bracketShell" class="card w-100 bracket-shell" style="border-color: transparent">
+      <div class="card-body w-100" style="border-color: transparent">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-3">
+          <div class="small text-muted">Scroll to navigate · Use zoom controls for detail</div>
+          <div class="btn-group btn-group-sm">
+            <button type="button" id="zoomOutBtn" class="btn btn-outline-secondary">-</button>
+            <button type="button" id="zoomResetBtn" class="btn btn-outline-secondary">100%</button>
+            <button type="button" id="zoomInBtn" class="btn btn-outline-secondary">+</button>
+          </div>
+        </div>
+        <div class="bracket-scroll" id="bracketScroll">
+            <div class="bracket-zoom-surface" id="bracketZoomSurface" data-default-zoom="0.6">
+            <div id="bracketContainer"></div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
-</div>
 
-<script src="js/include.js" data-include="footer"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js"></script>
-<script src="js/auth.js"></script>
-<script src="js/bracket-render.js"></script>
-<script>
-  const params = new URLSearchParams(window.location.search);
+  <script src="js/include.js" data-include="footer"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/bracket-render.js"></script>
+  <script>
+    const params = new URLSearchParams(window.location.search);
 
-  const sport = params.get("sport")     || "basketball-women";
-  let   bracketId = params.get("bracketId") ? parseInt(params.get("bracketId")) : null;
+    const sport = params.get("sport") || "basketball-women";
+    let bracketId = params.get("bracketId") ? parseInt(params.get("bracketId")) : null;
 
-  let allBrackets = [];
-  let bracketGames = [];
+    let allBrackets = [];
+    let bracketGames = [];
+    let pickStats = new Map();
 
-  document.addEventListener("DOMContentLoaded", async () => {
-    if (window.includeReady && typeof window.includeReady.then === 'function') await window.includeReady;
-    await updateNav();
+    document.addEventListener("DOMContentLoaded", async () => {
+      if (window.includeReady && typeof window.includeReady.then === 'function') await window.includeReady;
+      await updateNav();
 
-    if (sport === "basketball-men") {
-      document.getElementById("btn-men").classList.replace("btn-outline-primary", "btn-primary");
-    } else {
-      document.getElementById("btn-women").classList.replace("btn-outline-info", "btn-info");
-    }
+      if (sport === "basketball-men") {
+        document.getElementById("btn-men").classList.replace("btn-outline-primary", "btn-primary");
+      } else {
+        document.getElementById("btn-women").classList.replace("btn-outline-primary", "btn-primary");
+      }
 
-    await init();
-  });
+      await init();
+    });
 
-  async function init() {
-    try {
-      // Load all brackets for this sport/year (for the selector dropdown)
-      const { data: brackets, error: bErr } = await supabase
-        .from("brackets")
-        .select("id, bracket_name, total_points, app_users(name)")
-        .eq("sport", sport)
-        .eq("year", TOURNAMENT_YEAR)
-        .order("total_points", { ascending: false });
+    async function init() {
+      try {
+        // Load all brackets for this sport/year (for the selector dropdown)
+        const { data: brackets, error: bErr } = await supabase
+          .from("brackets")
+          .select("id, bracket_name, total_points, app_users(name)")
+          .eq("sport", sport)
+          .eq("year", TOURNAMENT_YEAR)
+          .order("total_points", { ascending: false });
 
-      if (bErr) throw bErr;
-      allBrackets = brackets ?? [];
+        if (bErr) throw bErr;
+        allBrackets = brackets ?? [];
 
-      document.getElementById("loadingMsg").classList.add("d-none");
+        document.getElementById("loadingMsg").classList.add("d-none");
 
-      if (!allBrackets.length) {
-        document.getElementById("noBracketsMsg").classList.remove("d-none");
-        document.getElementById("noBracketsMsg").innerHTML = `
+        if (!allBrackets.length) {
+          document.getElementById("noBracketsMsg").classList.remove("d-none");
+          document.getElementById("noBracketsMsg").innerHTML = `
           <div class="alert alert-info">
             <strong>No brackets submitted yet.</strong>
             <p>Be the first to <a href="submit-bracket.html?sport=${sport}">submit a bracket</a>!</p>
           </div>`;
+          return;
+        }
+
+        // Populate selector
+        const sel = document.getElementById("bracketSelect");
+        allBrackets.forEach((b) => {
+          const opt = document.createElement("option");
+          opt.value = b.id;
+          opt.textContent = `${b.app_users?.name ?? "Unknown"} (${b.total_points} pts)`;
+          if (b.id === bracketId) opt.selected = true;
+          sel.appendChild(opt);
+        });
+
+        // If no bracketId given, default to first
+        if (!bracketId) bracketId = allBrackets[0].id;
+        sel.value = bracketId;
+
+        sel.addEventListener("change", () => {
+          bracketId = parseInt(sel.value);
+          const url = new URL(window.location);
+          url.searchParams.set("bracketId", bracketId);
+          window.history.replaceState({}, "", url);
+          loadBracketView();
+        });
+
+        document.getElementById("bracketSelector").classList.remove("d-none");
+        document.getElementById("bracketShell").classList.remove("d-none");
+
+        // Load game data once (shared across bracket views)
+        const { games } = await loadBracketData(sport);
+        bracketGames = games;
+
+        // Load pick stats once for all brackets (for % display)
+        pickStats = await loadPickStats(allBrackets);
+
+        await loadBracketView();
+
+      } catch (err) {
+        document.getElementById("loadingMsg").classList.add("d-none");
+        document.getElementById("errorMsg").textContent = "Error loading data: " + err.message;
+        document.getElementById("errorMsg").classList.remove("d-none");
+      }
+    }
+
+    async function loadBracketView() {
+      if (!bracketId) return;
+
+      // Update page title
+      const selected = allBrackets.find((b) => b.id === bracketId);
+      if (selected) {
+        const sportLabel = sport === "basketball-men" ? "Men's" : "Women's";
+        document.getElementById("pageTitle").textContent =
+          `${selected.app_users?.name ?? "Unknown"}'s ${sportLabel} Bracket`;
+      }
+
+      // Load picks for this bracket
+      const { data: picks, error: pErr } = await supabase
+        .from("picks")
+        .select("game_id, picked_team_id, picked_team_id_2")
+        .eq("bracket_id", bracketId);
+
+      if (pErr) {
+        document.getElementById("errorMsg").textContent = "Error loading picks: " + pErr.message;
+        document.getElementById("errorMsg").classList.remove("d-none");
         return;
       }
 
-      // Populate selector
-      const sel = document.getElementById("bracketSelect");
-      allBrackets.forEach((b) => {
-        const opt = document.createElement("option");
-        opt.value = b.id;
-        opt.textContent = `${b.app_users?.name ?? "Unknown"} (${b.total_points} pts)`;
-        if (b.id === bracketId) opt.selected = true;
-        sel.appendChild(opt);
-      });
-
-      // If no bracketId given, default to first
-      if (!bracketId) bracketId = allBrackets[0].id;
-      sel.value = bracketId;
-
-      sel.addEventListener("change", () => {
-        bracketId = parseInt(sel.value);
-        const url = new URL(window.location);
-        url.searchParams.set("bracketId", bracketId);
-        window.history.replaceState({}, "", url);
-        loadBracketView();
-      });
-
-      document.getElementById("bracketSelector").classList.remove("d-none");
-      document.getElementById("bracketShell").classList.remove("d-none");
-
-      // Load game data once (shared across bracket views)
-      const { games } = await loadBracketData(sport);
-      bracketGames = games;
+      const picksMap = new Map((picks ?? []).map((p) => [p.game_id, p.picked_team_id]));
+      const picksMap2 = new Map((picks ?? []).filter((p) => p.picked_team_id_2 != null).map((p) => [p.game_id, p.picked_team_id_2]));
+      const container = document.getElementById("bracketContainer");
+      renderBracket(container, bracketGames, "scoring", picksMap, sport, picksMap2, pickStats);
 
       initZoomControls(
         document.getElementById("bracketScroll"),
@@ -151,44 +194,46 @@
         document.getElementById("zoomOutBtn"),
         document.getElementById("zoomResetBtn"),
       );
-
-      await loadBracketView();
-
-    } catch (err) {
-      document.getElementById("loadingMsg").classList.add("d-none");
-      document.getElementById("errorMsg").textContent = "Error loading data: " + err.message;
-      document.getElementById("errorMsg").classList.remove("d-none");
-    }
-  }
-
-  async function loadBracketView() {
-    if (!bracketId) return;
-
-    // Update page title
-    const selected = allBrackets.find((b) => b.id === bracketId);
-    if (selected) {
-      const sportLabel = sport === "basketball-men" ? "Men's" : "Women's";
-      document.getElementById("pageTitle").textContent =
-        `${selected.app_users?.name ?? "Unknown"}'s ${sportLabel} Bracket`;
     }
 
-    // Load picks for this bracket
-    const { data: picks, error: pErr } = await supabase
-      .from("picks")
-      .select("game_id, picked_team_id, picked_team_id_2")
-      .eq("bracket_id", bracketId);
-
-    if (pErr) {
-      document.getElementById("errorMsg").textContent = "Error loading picks: " + pErr.message;
-      document.getElementById("errorMsg").classList.remove("d-none");
-      return;
+    function buildPickStats(picks) {
+      const stats = new Map();
+      for (const p of picks ?? []) {
+        if (!p.game_id) continue;
+        let entry = stats.get(p.game_id);
+        if (!entry) {
+          entry = { total: 0, teamCounts: new Map(), comboCounts: new Map() };
+          stats.set(p.game_id, entry);
+        }
+        entry.total += 1;
+        if (p.picked_team_id_2 != null) {
+          const id1 = p.picked_team_id;
+          const id2 = p.picked_team_id_2;
+          if (id1 != null && id2 != null) {
+            const a = Math.min(id1, id2);
+            const b = Math.max(id1, id2);
+            const key = `${a}:${b}`;
+            entry.comboCounts.set(key, (entry.comboCounts.get(key) ?? 0) + 1);
+          }
+        } else if (p.picked_team_id != null) {
+          const teamId = p.picked_team_id;
+          entry.teamCounts.set(teamId, (entry.teamCounts.get(teamId) ?? 0) + 1);
+        }
+      }
+      return stats;
     }
 
-    const picksMap  = new Map((picks ?? []).map((p) => [p.game_id, p.picked_team_id]));
-    const picksMap2 = new Map((picks ?? []).filter((p) => p.picked_team_id_2 != null).map((p) => [p.game_id, p.picked_team_id_2]));
-    const container = document.getElementById("bracketContainer");
-    renderBracket(container, bracketGames, "scoring", picksMap, sport, picksMap2);
-  }
-</script>
+    async function loadPickStats(brackets) {
+      const bracketIds = (brackets ?? []).map((b) => b.id);
+      if (!bracketIds.length) return new Map();
+      const { data: picks, error: pErr } = await supabase
+        .from("picks")
+        .select("game_id, picked_team_id, picked_team_id_2")
+        .in("bracket_id", bracketIds);
+      if (pErr) throw pErr;
+      return buildPickStats(picks);
+    }
+  </script>
 </body>
+
 </html>

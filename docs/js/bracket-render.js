@@ -307,6 +307,7 @@ function scoringTeamRowHtml(
   pickedTeamId,
   actualWinnerId,
   pickedTeamId2 = null,
+  pickStatsForGame = null,
 ) {
   const isLast = slot === 2;
   const border = isLast ? "" : "border-bottom";
@@ -337,6 +338,21 @@ function scoringTeamRowHtml(
             </div>`;
   }
 
+  const totalPicks = pickStatsForGame?.total ?? 0;
+  let pickPercent = null;
+  if (totalPicks > 0) {
+    if (effectiveTeam.isCombo) {
+      const a = Math.min(effectiveTeam.id1, effectiveTeam.id2);
+      const b = Math.max(effectiveTeam.id1, effectiveTeam.id2);
+      const key = `${a}:${b}`;
+      const count = pickStatsForGame?.comboCounts?.get(key) ?? 0;
+      pickPercent = Math.round((count / totalPicks) * 100);
+    } else if (effectiveTeam.id != null) {
+      const count = pickStatsForGame?.teamCounts?.get(effectiveTeam.id) ?? 0;
+      pickPercent = Math.round((count / totalPicks) * 100);
+    }
+  }
+
   // For combo teams still in the bracket (play-in not yet resolved), match on either sub-team ID.
   const isPicked = effectiveTeam.isCombo
     ? pickedTeamId === effectiveTeam.id1 ||
@@ -356,9 +372,17 @@ function scoringTeamRowHtml(
   }
 
   const checkmark = isPicked
-    ? `<span class="ms-auto badge bg-secondary">&#10003;</span>`
+    ? `<span class="badge bg-secondary">&#10003;</span>`
     : "";
   const bold = isPicked ? "fw-bold" : "";
+  const percentHtml =
+    pickPercent === null
+      ? ""
+      : `<span class="pick-percent small text-muted">${pickPercent}%</span>`;
+  const trailingHtml =
+    percentHtml || checkmark
+      ? `<span class="ms-auto d-flex align-items-center gap-2">${percentHtml}${checkmark}</span>`
+      : "";
 
   return `
     <div class="team-option-scoring d-flex align-items-center px-3 py-2 ${border} ${pickClass}">
@@ -366,7 +390,7 @@ function scoringTeamRowHtml(
         ${logoHtml(effectiveTeam)}
         <span class="text-muted small">${effectiveTeam.seed}</span>
         <span class="${bold}">${effectiveTeam.name_short}</span>
-        ${checkmark}
+        ${trailingHtml}
       </span>
     </div>`;
 }
@@ -400,7 +424,12 @@ function editableGameCardHtml(game) {
     </div>`;
 }
 
-function scoringGameCardHtml(game, pickedTeamId, pickedTeamId2 = null) {
+function scoringGameCardHtml(
+  game,
+  pickedTeamId,
+  pickedTeamId2 = null,
+  pickStatsForGame = null,
+) {
   const {
     id,
     bracket_position_id,
@@ -409,6 +438,7 @@ function scoringGameCardHtml(game, pickedTeamId, pickedTeamId2 = null) {
     winner_id,
     game_state,
     start_time,
+    round,
   } = game;
   const tbdClass = !team1 && !team2 ? "tbd" : "";
 
@@ -421,11 +451,25 @@ function scoringGameCardHtml(game, pickedTeamId, pickedTeamId2 = null) {
   }
 
   return `
-    <div class="bracket-game scoring-game" data-bracket-position="${bracket_position_id}">
+    <div class="bracket-game scoring-game" data-bracket-position="${bracket_position_id}" data-round="${round ?? ""}" data-winner="${winner_id ?? ""}">
       <div class="matchup card ${tbdClass}">
         <div class="card-body p-0">
-          ${scoringTeamRowHtml(team1, 1, pickedTeamId, winner_id, pickedTeamId2)}
-          ${scoringTeamRowHtml(team2, 2, pickedTeamId, winner_id, pickedTeamId2)}
+          ${scoringTeamRowHtml(
+            team1,
+            1,
+            pickedTeamId,
+            winner_id,
+            pickedTeamId2,
+            pickStatsForGame,
+          )}
+          ${scoringTeamRowHtml(
+            team2,
+            2,
+            pickedTeamId,
+            winner_id,
+            pickedTeamId2,
+            pickStatsForGame,
+          )}
           ${statusHtml}
         </div>
       </div>
@@ -515,7 +559,7 @@ function renderFinalPanel(finalGames, renderGameFn) {
   const semifinals = ordered
     .filter((g) => g.round === 6)
     .sort((a, b) => a.bracket_position_id - b.bracket_position_id);
-    console.log("semifinals", semifinals);
+  console.log("semifinals", semifinals);
   const semifinalLeft = semifinals[0] ?? null;
   const semifinalRight = semifinals[1] ?? null;
   const championship = ordered.find((g) => g.round === 7) ?? null;
@@ -527,22 +571,27 @@ function renderFinalPanel(finalGames, renderGameFn) {
       ? `<div class="col d-flex"><div class="d-flex flex-column justify-content-around w-100 round-games">${renderGameFn(game)}</div></div>`
       : `<div class="col"></div>`;
 
+  // Build the middle column so the champion card sits directly below the championship game
+  const middleCol = championship
+    ? `<div class="col d-flex"><div class="d-flex flex-column justify-content-center w-100 round-games">${renderGameFn(championship)}
+         <div class="bracket-game champion-card mt-3">
+           <div class="matchup card">
+             <div class="card-body p-2">
+               <div class="text-center small text-muted">Champion: <span class="fw-bold"><span class="champion-name">${champion ? champion.name_short : "TBD"}</span></span></div>
+             </div>
+           </div>
+         </div>
+       </div></div>`
+    : `<div class="col"></div>`;
+
   return `
     <section class="region-panel card shadow-sm region-panel-final">
       <div class="card-header py-2 text-center fw-semibold">Final Four &amp; Championship</div>
       <div class="card-body p-2">
         <div class="row row-cols-3 g-3 align-items-center final-round-wrap">
           ${col(semifinalLeft)}
-          ${col(championship)}
+          ${middleCol}
           ${col(semifinalRight)}
-        </div>
-        <div class="row row-cols-1 g-1 align-items-center final-round-wrap">
-          <div class="col">
-          <div class="card">
-            <div class="card-body p-2">
-              <div class="text-center small text-muted">Champion: <span class="fw-bold">${champion ? champion.name_short : "TBD"}</span></div>
-            </div>
-          </div>
         </div>
       </div>
     </section>`;
@@ -582,6 +631,7 @@ function renderPlayInSection(playInGames) {
  * @param {Map}         picksMap               Map<gameId, pickedTeamId> (only for scoring mode)
  * @param {string}      sport                  "basketball-men" | "basketball-women"
  * @param {Map}         picksMap2              Map<gameId, pickedTeamId2> for combo picks (scoring mode)
+ * @param {Map}         pickStats              Map<gameId, { total, teamCounts, comboCounts }>
  */
 function renderBracket(
   container,
@@ -590,6 +640,7 @@ function renderBracket(
   picksMap = new Map(),
   sport = "basketball-men",
   picksMap2 = new Map(),
+  pickStats = new Map(),
 ) {
   const isEditable = mode === "editable";
   const labelMap =
@@ -628,7 +679,13 @@ function renderBracket(
     if (isEditable) return editableGameCardHtml(game);
     const pickedTeamId = picksMap.get(game.id) ?? null;
     const pickedTeamId2 = picksMap2.get(game.id) ?? null;
-    return scoringGameCardHtml(game, pickedTeamId, pickedTeamId2);
+    const pickStatsForGame = pickStats.get(game.id) ?? null;
+    return scoringGameCardHtml(
+      game,
+      pickedTeamId,
+      pickedTeamId2,
+      pickStatsForGame,
+    );
   }
 
   const regionGames = (code) =>
@@ -659,13 +716,65 @@ function renderBracket(
     : `<section class="region-panel card shadow-sm region-panel-final"><div class="card-header py-2 text-center">Final Four</div><div class="card-body"><p class="text-muted">Final Four data not yet available.</p></div></section>`;
 
   container.innerHTML = `
-    <div class="row row-cols-3 align-items-start flex-nowrap gx-3 bracket-board">
-      <div class="col bracket-board-col">${leftPanels}</div>
-      <div class="col bracket-board-col bracket-board-col-final">${finalPanel}</div>
-      <div class="col bracket-board-col">${rightPanels}</div>
-    </div>`;
+
+      <div class="row row-cols-3 align-items-start flex-nowrap gx-3 bracket-board">
+        <div class="col bracket-board-col">${leftPanels}</div>
+        <div class="col bracket-board-col bracket-board-col-final">${finalPanel}</div>
+        <div class="col bracket-board-col">${rightPanels}</div>
+      </div>`;
 
   if (isEditable) attachEditableHandlers(container);
+  // Ensure champion label matches current selection after initial render
+  try {
+    updateChampionDisplay(
+      container.querySelector(".bracket-board") ?? container,
+    );
+  } catch (e) {
+    /* ignore if helper not available yet */
+  }
+}
+
+/**
+ * Update the Champion display inside a rendered bracket board.
+ * `container` should be the element that contains the `.bracket-board` markup.
+ */
+function updateChampionDisplay(container) {
+  if (!container) return;
+  const champSpan = container.querySelector(
+    ".region-panel-final .champion-name",
+  );
+  if (!champSpan) return;
+  const championshipGame =
+    container.querySelector(
+      '.region-panel-final .bracket-game[data-round="7"]',
+    ) || container.querySelector(".region-panel-final .bracket-game");
+  if (!championshipGame) {
+    return; // nothing to do
+  }
+  const selected = championshipGame.querySelector("input[type=radio]:checked");
+  if (selected) {
+    const opt = selected.closest(".team-option");
+    const name =
+      (opt && opt.dataset && opt.dataset.teamName) ||
+      (opt && opt.textContent && opt.textContent.trim()) ||
+      "";
+    champSpan.textContent = name || "TBD";
+    return;
+  }
+  // No explicit selection — fallback to any winner dataset on the game element
+  const winnerId =
+    championshipGame.dataset.winnerId || championshipGame.dataset.winner || "";
+  if (winnerId) {
+    const optById = championshipGame.querySelector(
+      `.team-option[data-team-id="${winnerId}"]`,
+    );
+    if (optById && optById.dataset.teamName) {
+      champSpan.textContent = optById.dataset.teamName;
+      return;
+    }
+  }
+  // If there's no selected radio and no winner info on the DOM, preserve whatever
+  // server-rendered text is already present (do not overwrite with 'TBD').
 }
 
 function capitalize(s) {
@@ -736,6 +845,10 @@ function attachEditableHandlers(container) {
     const targetOpt = teamOpts[slot - 1];
     if (!targetOpt) return;
 
+    const prevTeamId = targetOpt.dataset.teamId || "";
+    const prevSelected = matchup.querySelector("input[type=radio]:checked");
+    const prevSelectedId = prevSelected ? prevSelected.value : "";
+
     const nextGameId = nextEl.dataset.gameId;
     const border = slot === 1 ? "border-bottom" : "";
 
@@ -773,12 +886,26 @@ function attachEditableHandlers(container) {
     );
     if (allFilled) matchup.classList.remove("tbd");
 
-    // Clear any downstream picks from this game
-    nextEl
-      .querySelectorAll("input[type=radio]")
-      .forEach((r) => (r.checked = false));
-    const nextVp = parseInt(nextEl.dataset.victorPosition);
-    if (nextVp && positionMap.has(nextVp)) clearCascading(nextVp);
+    // Preserve the existing pick if it still points to a valid team option.
+    let selectionStillValid = false;
+    if (prevSelectedId) {
+      const radios = [...matchup.querySelectorAll("input[type=radio]")];
+      const matchingRadio = radios.find((r) => r.value === prevSelectedId);
+      if (matchingRadio) {
+        matchingRadio.checked = true;
+        matchingRadio.closest(".team-option")?.classList.add("selected");
+        selectionStillValid = true;
+      }
+    }
+
+    // Only clear downstream picks if the existing selection became impossible.
+    if (!selectionStillValid && prevSelectedId) {
+      nextEl
+        .querySelectorAll("input[type=radio]")
+        .forEach((r) => (r.checked = false));
+      const nextVp = parseInt(nextEl.dataset.victorPosition);
+      if (nextVp && positionMap.has(nextVp)) clearCascading(nextVp);
+    }
   }
 
   container
@@ -850,6 +977,13 @@ function attachRadioHandler(
       propagateWinner(victorPos, sourcePos, team, gameEl);
     }
     gameEl.querySelector(".matchup")?.classList.remove("error");
+    // Update champion display when picks change
+    try {
+      const board = this.closest(".bracket-board");
+      if (board) updateChampionDisplay(board);
+    } catch (e) {
+      /* ignore */
+    }
   });
 
   // Also handle click on label/row
@@ -953,7 +1087,7 @@ function autofill(container) {
 // ZOOM CONTROLS
 // ────────────────────────────────────────────────────────────────
 
-function initZoomControls(scrollEl, zoomSurfaceEl, inBtn, outBtn, resetBtn) {
+function initZoomControls(scrollEl, zoomSurfaceEl, inBtn, outBtn, resetBtn, initialZoomParam) {
   if (!scrollEl || !zoomSurfaceEl) return;
   const board = zoomSurfaceEl.querySelector(".bracket-board");
   if (!board) return;
@@ -976,8 +1110,18 @@ function initZoomControls(scrollEl, zoomSurfaceEl, inBtn, outBtn, resetBtn) {
     if (resetBtn) resetBtn.textContent = `${Math.round(zoom * 100)}%`;
   }
 
-  function fitToPanel() {
-    zoom = fitZoom();
+  // Allow an explicit initial zoom via parameter or data attribute on the zoom surface.
+  const attrZoom = zoomSurfaceEl?.dataset?.defaultZoom ? parseFloat(zoomSurfaceEl.dataset.defaultZoom) : null;
+  const initialZoom = typeof initialZoomParam === "number" && !isNaN(initialZoomParam)
+    ? initialZoomParam
+    : (attrZoom && !isNaN(attrZoom) ? attrZoom : null);
+
+  function fitToPanel(explicitZoom = null) {
+    if (explicitZoom != null && !isNaN(explicitZoom)) {
+      zoom = Math.max(0.2, Math.min(MAX, explicitZoom));
+    } else {
+      zoom = fitZoom();
+    }
     applyZoom();
     scrollEl.scrollLeft = 0;
     scrollEl.scrollTop = 0;
@@ -1009,7 +1153,9 @@ function initZoomControls(scrollEl, zoomSurfaceEl, inBtn, outBtn, resetBtn) {
     applyZoom();
   });
 
-  fitToPanel();
+  // If an initial zoom was supplied (param or data attribute), use it; otherwise fit to panel.
+  if (initialZoom != null) fitToPanel(initialZoom);
+  else fitToPanel();
 }
 
 // Exports for testing environments (e.g. Jest)
@@ -1023,6 +1169,7 @@ if (typeof module !== "undefined" && module.exports) {
     autofill,
     initZoomControls,
     // Expose internal helpers for tests if needed:
+    updateChampionDisplay,
     titleCase,
     capitalize,
   };

@@ -1,0 +1,28 @@
+// Custom Bootstrap overrides for March Madness site
+// Override core variables before importing Bootstrap
+$primary: #3056BF;
+$secondary: #daa520;
+$success: #198754;
+$info: #7c98ce;
+$warning: #ffc107;
+$danger: #dc3545;
+//   --blue-color: #3056BF; 
+//   --blue-color-light: #7c98ce;
+//   --blue-color-dark: #133287;
+//   --gold-dark: #daa520;
+//   --gold-light: #e3d5a8;
+// Theme colors map (ensures utilities use these colors)
+$theme-colors: (
+  "primary": $primary,
+  "secondary": $secondary,
+  "success": $success,
+  "info": $info,
+  "warning": $warning,
+  "danger": $danger
+);
+
+// Optionally tweak other tokens used by this project
+$body-bg: #ffffff;
+$body-color: #212529;
+
+@import "../../node_modules/bootstrap/scss/bootstrap";

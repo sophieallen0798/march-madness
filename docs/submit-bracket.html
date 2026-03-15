@@ -138,8 +138,8 @@
         <button type="button" id="submitBtn" class="btn btn-lg btn-primary">Submit Bracket</button>
       </div>
 
-      <div class="card w-100 bracket-shell">
-        <div class="card-body p-0">
+      <div class="card w-100 bracket-shell" style="border-color: transparent">
+        <div class="card-body w-100" style="border-color: transparent">
           <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-3">
             <div class="d-flex align-items-center gap-2">
               <span class="small text-muted">Scroll to navigate · Use zoom controls for detail</span>
@@ -158,7 +158,7 @@
           </div>
 
           <div class="bracket-scroll" id="bracketScroll">
-            <div class="bracket-zoom-surface" id="bracketZoomSurface">
+            <div class="bracket-zoom-surface" id="bracketZoomSurface" data-default-zoom="0.6">
               <div id="bracketContainer"></div>
             </div>
           </div>
@@ -203,7 +203,7 @@
       if (sport === "basketball-men") {
         document.getElementById("btn-men").classList.replace("btn-outline-primary", "btn-primary");
       } else {
-        document.getElementById("btn-women").classList.replace("btn-outline-info", "btn-info");
+        document.getElementById("btn-women").classList.replace("btn-outline-primary", "btn-primary");
       }
     });
 
@@ -315,10 +315,8 @@
 
       try {
         const { games } = await loadBracketData(sport);
-
         bracketGames = games;
-        console.log(`Loaded ${games.length} games for ${sport} ${TOURNAMENT_YEAR}`);
-console.log("Games:", games);
+
         const playableGames = games.filter(g => g.round >= 2);
         if (!playableGames.length) {
           document.getElementById("loadingMsg").classList.add("d-none");
