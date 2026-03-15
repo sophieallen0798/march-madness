@@ -577,7 +577,7 @@ function renderFinalPanel(finalGames, renderGameFn) {
          <div class="bracket-game champion-card mt-3">
            <div class="matchup card">
              <div class="card-body p-2">
-               <div class="text-center small text-muted">Champion: <span class="fw-bold"><span class="champion-name">${champion ? champion.name_short : "TBD"}</span></span></div>
+               <div class="text-center small champion-label text-muted">Champion: <span class="fw-bold"><span class="champion-name">${champion ? champion.name_short : "TBD"}</span></span></div>
              </div>
            </div>
          </div>
@@ -759,6 +759,21 @@ function updateChampionDisplay(container) {
       (opt && opt.textContent && opt.textContent.trim()) ||
       "";
     champSpan.textContent = name || "TBD";
+    // Toggle label color: success when a champion name exists, muted otherwise
+    try {
+      const labelEl = champSpan.closest('.champion-label');
+      if (labelEl) {
+        if (name && name !== 'TBD') {
+          labelEl.classList.remove('text-muted');
+          labelEl.classList.add('text-success');
+        } else {
+          labelEl.classList.remove('text-success');
+          labelEl.classList.add('text-muted');
+        }
+      }
+    } catch (e) {
+      /* ignore */
+    }
     return;
   }
   // No explicit selection — fallback to any winner dataset on the game element
@@ -770,6 +785,15 @@ function updateChampionDisplay(container) {
     );
     if (optById && optById.dataset.teamName) {
       champSpan.textContent = optById.dataset.teamName;
+      try {
+        const labelEl = champSpan.closest('.champion-label');
+        if (labelEl) {
+          labelEl.classList.remove('text-muted');
+          labelEl.classList.add('text-success');
+        }
+      } catch (e) {
+        /* ignore */
+      }
       return;
     }
   }
