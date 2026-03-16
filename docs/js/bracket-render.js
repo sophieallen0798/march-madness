@@ -765,7 +765,7 @@ function updateChampionDisplay(container) {
       if (labelEl) {
         if (name && name !== 'TBD') {
           labelEl.classList.remove('text-muted');
-          labelEl.classList.add('text-success');
+          labelEl.classList.add('text-light');
         } else {
           labelEl.classList.remove('text-success');
           labelEl.classList.add('text-muted');
