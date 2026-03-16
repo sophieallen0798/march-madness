@@ -68,7 +68,6 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="js/config.js"></script>
-  <script src="js/data-refresh.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/bracket-render.js"></script>
   <script>
@@ -93,18 +92,6 @@
       }
 
       bindBracketSelector();
-
-      // Load authoritative backend timestamp then load page data once
-      try {
-        const { data } = await supabase
-          .from('sync_status')
-          .select('last_refreshed_at')
-          .eq('id', 'last_api_sync')
-          .maybeSingle();
-        if (data?.last_refreshed_at) markApiDataRefresh(new Date(data.last_refreshed_at));
-      } catch (err) {
-        console.error('Failed to read sync_status:', err);
-      }
 
       await refreshBracketPage();
     });

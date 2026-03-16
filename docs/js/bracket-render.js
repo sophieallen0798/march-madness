@@ -770,6 +770,17 @@ function updateChampionDisplay(container) {
           labelEl.classList.remove('text-success');
           labelEl.classList.add('text-muted');
         }
+          // Also mark the champion card background green when a champion exists
+          try {
+            const champCardMatch = champSpan.closest('.champion-card')?.querySelector('.matchup') || champSpan.closest('.matchup');
+            if (champCardMatch) {
+              if (name && name !== 'TBD') {
+                champCardMatch.classList.add('bg-success', 'text-white');
+              } else {
+                champCardMatch.classList.remove('bg-success', 'text-white');
+              }
+            }
+          } catch (e) {/* ignore */}
       }
     } catch (e) {
       /* ignore */
@@ -791,6 +802,12 @@ function updateChampionDisplay(container) {
           labelEl.classList.remove('text-muted');
           labelEl.classList.add('text-success');
         }
+        try {
+          const champCardMatch = champSpan.closest('.champion-card')?.querySelector('.matchup') || champSpan.closest('.matchup');
+          if (champCardMatch) {
+            champCardMatch.classList.add('bg-success', 'text-white');
+          }
+        } catch (e) {/* ignore */}
       } catch (e) {
         /* ignore */
       }
@@ -835,27 +852,48 @@ function attachEditableHandlers(container) {
     return sourcePos < targetPos ? 1 : 2;
   }
 
-  function clearCascading(startPos) {
+  // Clear only the downstream options that were derived from `originPos`.
+  // If `originPos` is not supplied, defaults to `startPos` (full clear behavior).
+  function clearCascading(startPos, originPos = startPos) {
     const gameEl = positionMap.get(startPos);
     if (!gameEl) return;
-    gameEl
-      .querySelectorAll("input[type=radio]")
-      .forEach((r) => (r.checked = false));
+
     const matchup = gameEl.querySelector(".matchup");
-    if (matchup) {
-      matchup.querySelectorAll(".team-option").forEach((opt) => {
+    if (!matchup) return;
+
+    // Track whether any cleared option was selected so we can recurse downstream.
+    let clearedSelected = false;
+
+    const opts = [...matchup.querySelectorAll(".team-option")];
+    opts.forEach((opt) => {
+      // Only clear options that were created/derived from the originating source.
+      const optSource = opt.dataset.sourcePos ?? null;
+      if (optSource && String(optSource) === String(originPos)) {
+        const radio = opt.querySelector("input[type=radio]");
+        if (radio && radio.checked) clearedSelected = true;
+        // remove selection and provenance
+        if (radio) radio.checked = false;
         opt.classList.add("placeholder");
         opt.classList.remove("selected");
-        opt.dataset.teamId = "";
-        opt.dataset.teamName = "";
-        opt.dataset.teamSeed = "";
-        opt.dataset.teamLogo = "";
+        delete opt.dataset.teamId;
+        delete opt.dataset.teamName;
+        delete opt.dataset.teamSeed;
+        delete opt.dataset.teamLogo;
+        delete opt.dataset.sourcePos;
         opt.innerHTML = `<span class="small text-muted fst-italic">TBD</span>`;
-      });
-      matchup.classList.add("tbd");
+      }
+    });
+
+    // If both slots are placeholders, mark matchup as TBD; otherwise ensure TBD is removed.
+    const stillPlaceholders = [...matchup.querySelectorAll('.team-option')].every((o) => o.classList.contains('placeholder'));
+    if (stillPlaceholders) matchup.classList.add('tbd');
+    else matchup.classList.remove('tbd');
+
+    // If a cleared option had been selected, recurse to downstream games to clear their derived options as well.
+    if (clearedSelected) {
+      const vp = parseInt(gameEl.dataset.victorPosition);
+      if (vp && positionMap.has(vp)) clearCascading(vp, originPos);
     }
-    const vp = parseInt(gameEl.dataset.victorPosition);
-    if (vp && positionMap.has(vp)) clearCascading(vp);
   }
 
   function propagateWinner(victorPos, sourcePos, team, sourceGameEl) {
@@ -870,6 +908,7 @@ function attachEditableHandlers(container) {
     if (!targetOpt) return;
 
     const prevTeamId = targetOpt.dataset.teamId || "";
+    const prevTeamSource = targetOpt.dataset.sourcePos ?? null;
     const prevSelected = matchup.querySelector("input[type=radio]:checked");
     const prevSelectedId = prevSelected ? prevSelected.value : "";
 
@@ -881,6 +920,8 @@ function attachEditableHandlers(container) {
     targetOpt.dataset.teamName = team.name_short;
     targetOpt.dataset.teamSeed = team.seed;
     targetOpt.dataset.teamLogo = team.logo_url ?? "";
+      // Mark provenance: which source bracket position produced this option
+      targetOpt.dataset.sourcePos = String(sourcePos);
 
     const teamInner = team.isCombo
       ? `<span class="badge bg-secondary text-white small">Play-In</span><span>${team.name_short}</span>`
@@ -922,13 +963,16 @@ function attachEditableHandlers(container) {
       }
     }
 
-    // Only clear downstream picks if the existing selection became impossible.
+    // Only clear downstream picks if the existing selection became impossible
+    // and that previous pick was derived from the same source we just changed.
     if (!selectionStillValid && prevSelectedId) {
-      nextEl
-        .querySelectorAll("input[type=radio]")
-        .forEach((r) => (r.checked = false));
-      const nextVp = parseInt(nextEl.dataset.victorPosition);
-      if (nextVp && positionMap.has(nextVp)) clearCascading(nextVp);
+      if (prevTeamSource && String(prevTeamSource) === String(sourcePos)) {
+        nextEl
+          .querySelectorAll("input[type=radio]")
+          .forEach((r) => (r.checked = false));
+        const nextVp = parseInt(nextEl.dataset.victorPosition);
+        if (nextVp && positionMap.has(nextVp)) clearCascading(nextVp, sourcePos);
+      }
     }
   }
 
