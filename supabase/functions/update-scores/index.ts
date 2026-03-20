@@ -1,209 +1,254 @@
 // Supabase Edge Function: update-scores
-// Fetches latest scoreboard from NCAA proxy API and updates game results
-// in Supabase.  Also recalculates total_points on every affected bracket.
+// Fetches the latest bracket data from the NCAA API, updates game results
+// (winner, scores, game state) in the database, then recalculates
+// total_points on every bracket. Processes both basketball-men and
+// basketball-women for 2026 on every invocation.
 //
 // Invoke via POST /functions/v1/update-scores
-// Body: { "sport": "basketball-men", "year": 2025 }
-// Headers: Authorization: Bearer <supabase_user_jwt>  (must be admin)
+// Auth:    Authorization: Bearer <supabase_user_jwt>  (must be admin)
+//       OR x-admin-code: <ADMIN_ACCESS_CODE> header
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const NCAA_API_BASE = "https://ncaa-api.henrygd.me";
+const YEAR          = 2026;
+const SPORTS        = ["basketball-men", "basketball-women"] as const;
+const PAGE_SIZE     = 1000;
+
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Authorization, Content-Type, x-admin-code",
+};
+
+interface SportResult {
+  updatedGames: number;
+  recalculatedBrackets: number;
+  gameErrors: string[];
+  error?: string;
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, {
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Authorization, Content-Type, x-admin-code",
-      },
-    });
+    return new Response(null, { headers: CORS_HEADERS });
   }
 
-  // ── Auth ──────────────────────────────────────────────────────────────────
-  // Support either Supabase JWT or an admin code (x-admin-code header)
-  const supabaseUrl      = Deno.env.get("SUPABASE_URL")!;
-  const supabaseAnonKey  = Deno.env.get("SUPABASE_ANON_KEY")!;
-  const serviceKey       = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const adminEmailsRaw   = Deno.env.get("ADMIN_EMAILS") ?? "";
-  const adminEmails      = adminEmailsRaw.split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
+  const supabaseUrl     = Deno.env.get("SUPABASE_URL")!;
+  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+  const serviceKey      = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const adminCodeEnv    = (Deno.env.get("ADMIN_ACCESS_CODE") ?? "").trim();
 
-  const adminCodeHeader = req.headers.get("x-admin-code") ?? "";
-  // Use a dedicated admin access code for function calls (separate from SITE_ACCESS_CODE used for site gating)
-  const adminCodeEnv = (Deno.env.get("ADMIN_ACCESS_CODE") ?? "").trim();
-
-  // Attempt to read code from request body (support JSON or urlencoded form)
+  // Require admin access code in `x-admin-code` header or body `code` field.
   let adminCodeBody = "";
   try {
     const raw = await req.text();
     if (raw) {
-      try {
-        const parsed = JSON.parse(raw);
-        adminCodeBody = (parsed?.code ?? "").toString();
-      } catch {
-        try {
-          const params = new URLSearchParams(raw);
-          adminCodeBody = params.get("code") ?? "";
-        } catch {
-          adminCodeBody = "";
-        }
-      }
+      try { adminCodeBody = String(JSON.parse(raw)?.code ?? ""); }
+      catch { adminCodeBody = new URLSearchParams(raw).get("code") ?? ""; }
     }
-  } catch {
-    adminCodeBody = "";
+  } catch { /* ignore read errors */ }
+
+  const providedCode = (req.headers.get("x-admin-code") ?? adminCodeBody).trim();
+  if (!providedCode || !adminCodeEnv || providedCode !== adminCodeEnv) {
+    return jsonError("Invalid admin code", 401);
   }
-
-  const providedAdminCode = (adminCodeHeader || adminCodeBody || "").trim();
-  if (providedAdminCode && adminCodeEnv && providedAdminCode === adminCodeEnv) {
-    // Bypass JWT validation — treat as admin
-  } else {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) return jsonError("Missing auth", 401);
-    const jwt = authHeader.replace("Bearer ", "");
-
-    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: `Bearer ${jwt}` } },
-    });
-    const { data: { user }, error: userErr } = await userClient.auth.getUser();
-    if (userErr || !user) return jsonError("Invalid token", 401);
-    if (!adminEmails.includes(user.email?.toLowerCase() ?? "")) {
-      return jsonError("Forbidden", 403);
-    }
-  }
-
-  // ── Parse body ────────────────────────────────────────────────────────────
-  let sport = "basketball-men";
-  let year  = 2025;
-  try {
-    const body = await req.json();
-    if (body.sport) sport = body.sport;
-    if (body.year)  year  = Number(body.year);
-  } catch { /* defaults */ }
 
   const svc = createClient(supabaseUrl, serviceKey);
 
-  // ── Fetch scoreboard from NCAA proxy API ───────────────────────────────────
-  const apiUrl = `${NCAA_API_BASE}/scoreboard/${sport}/d1`;
-  let scoreboardData: any;
+  // ── Process both sports in parallel ──────────────────────────────────────
+  const sportResults = await Promise.all(
+    SPORTS.map(async (sport) => [sport, await processSport(svc, sport, YEAR)] as const)
+  );
+  const results = Object.fromEntries(sportResults);
+
+  // ── Update sync timestamp ─────────────────────────────────────────────────
+  await svc.from("sync_status").upsert({
+    id: "last_api_sync",
+    last_refreshed_at: new Date().toISOString(),
+  });
+
+  return new Response(
+    JSON.stringify({ success: true, year: YEAR, results }),
+    { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } },
+  );
+});
+
+// ── Per-sport processing ──────────────────────────────────────────────────────
+
+async function processSport(svc: any, sport: string, year: number): Promise<SportResult> {
+  // Fetch latest bracket data from the NCAA API
+  const apiUrl = `${NCAA_API_BASE}/brackets/${sport}/d1/${year}`;
+  let apiGames: any[];
   try {
     const resp = await fetch(apiUrl);
     if (!resp.ok) throw new Error(`NCAA API returned ${resp.status}`);
-    scoreboardData = await resp.json();
+    const data = await resp.json();
+    const championship = (data?.championships ?? data?.Championships)?.[0];
+    if (!championship) throw new Error("No championship data in response");
+    apiGames = championship.games ?? championship.Games ?? [];
   } catch (err: any) {
-    return jsonError(`Failed to fetch scoreboard: ${err.message}`, 502);
+    console.error(`processSport(${sport}): API error: ${err.message}`);
+    return { updatedGames: 0, recalculatedBrackets: 0, gameErrors: [], error: err.message };
   }
 
-  const games: any[] = scoreboardData?.games ?? scoreboardData?.Games ?? [];
-
-  // ── Build contestId -> game lookup from our DB ────────────────────────────
-  const { data: dbGames } = await svc
-    .from("games")
-    .select("id, contest_id, bracket_position_id, team1_id, team2_id")
-    .eq("sport", sport)
-    .eq("year", year);
-
-  const gameByContestId = new Map<number, any>();
-  for (const g of (dbGames ?? [])) gameByContestId.set(g.contest_id, g);
-
-  // ── Build seoName -> teamId ───────────────────────────────────────────────
-  const { data: dbTeams } = await svc
+  // Build team lookup (seo_name / name → DB id)
+  const { data: dbTeams, error: teamsErr } = await svc
     .from("teams")
-    .select("id, seo_name")
+    .select("id, seo_name, name_short, name_full")
     .eq("sport", sport)
     .eq("year", year);
-  const teamIdBySeo = new Map<string, number>();
-  for (const t of (dbTeams ?? [])) teamIdBySeo.set(t.seo_name, t.id);
 
-  let updatedGames = 0;
-
-  for (const apiGame of games) {
-    const contestId = Number(apiGame.contestId ?? apiGame.ContestId ?? 0);
-    const dbGame = gameByContestId.get(contestId);
-    if (!dbGame) continue;
-
-    const apiTeams: any[] = apiGame.teams ?? apiGame.Teams ?? [];
-    const winnerTeam = apiTeams.find(
-      (t: any) => (t.isWinner ?? t.IsWinner) === true || String(t.winner ?? t.Winner) === "true",
-    );
-    const winnerSeo   = winnerTeam?.seoName ?? winnerTeam?.SeoName;
-    const winnerId    = winnerSeo ? (teamIdBySeo.get(winnerSeo) ?? null) : null;
-    const gameState   = apiGame.gameState ?? apiGame.GameState ?? "pre";
-    const t1Score     = apiTeams[0]?.score != null ? Number(apiTeams[0].score) : null;
-    const t2Score     = apiTeams[1]?.score != null ? Number(apiTeams[1].score) : null;
-    const currentPer  = String(apiGame.currentPeriod ?? apiGame.CurrentPeriod ?? "");
-
-    const { error: updErr } = await svc
-      .from("games")
-      .update({ winner_id: winnerId, game_state: gameState, team1_score: t1Score, team2_score: t2Score, current_period: currentPer })
-      .eq("id", dbGame.id);
-
-    if (!updErr) updatedGames++;
+  if (teamsErr) {
+    return { updatedGames: 0, recalculatedBrackets: 0, gameErrors: [], error: teamsErr.message };
   }
 
-  // ── Recalculate total_points for all brackets of this sport/year ──────────
+  const teamIdByKey = new Map<string, number>();
+  for (const t of (dbTeams ?? [])) {
+    for (const key of [t.seo_name, t.name_short, t.name_full]) {
+      if (key) teamIdByKey.set(key.toLowerCase(), t.id);
+    }
+  }
+
+  // Update game results
+  let updatedGames = 0;
+  const gameErrors: string[] = [];
+
+  for (const g of apiGames) {
+    const bracketPositionId = Number(g.bracketPositionId ?? g.BracketPositionId ?? 0);
+    if (!bracketPositionId) continue;
+
+    const teams         = g.teams ?? g.Teams ?? [];
+    const gameState     = String(g.gameState ?? g.GameState ?? "P");
+    const currentPeriod = String(g.currentPeriod ?? g.CurrentPeriod ?? "");
+
+    // Winner: prefer explicit winner field, fall back to isWinner flag on a team.
+    const winnerTeam = teams.find((t: any) => t.isWinner === true || t.IsWinner === true)
+                       ?? g.winner ?? g.Winner ?? null;
+    const winnerId   = winnerTeam ? resolveTeamId(winnerTeam, teamIdByKey) : null;
+
+    const team1Score = parseScore(teams[0]?.score);
+    const team2Score = parseScore(teams[1]?.score);
+
+    const isFinal  = gameState === "F" || currentPeriod === "FINAL";
+    const hasScore = team1Score !== null || team2Score !== null;
+    if (!isFinal && !hasScore && !winnerId) continue;
+
+    const updateData: Record<string, any> = { game_state: gameState, current_period: currentPeriod };
+    if (team1Score !== null) updateData.team1_score = team1Score;
+    if (team2Score !== null) updateData.team2_score = team2Score;
+    if (winnerId   !== null) updateData.winner_id   = winnerId;
+
+    const { error } = await svc
+      .from("games")
+      .update(updateData)
+      .eq("bracket_position_id", bracketPositionId)
+      .eq("sport", sport)
+      .eq("year", year);
+
+    if (error) gameErrors.push(`pos ${bracketPositionId}: ${error.message}`);
+    else updatedGames++;
+  }
+
+  // Resolve combo picks (First Four play-in picks)
+  // Once a play-in winner advances, collapse the two-team pick to that specific team.
+  let page = 0;
+  while (true) {
+    const { data: batch } = await svc
+      .from("picks")
+      .select("id, picked_team_id, picked_team_id_2, games(team1_id, team2_id, sport, year)")
+      .not("picked_team_id_2", "is", null)
+      .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+    if (!batch || batch.length === 0) break;
+
+    for (const p of batch) {
+      const game = p.games;
+      if (!game || game.sport !== sport || game.year !== year) continue;
+      const t1   = game.team1_id as number | null;
+      const t2   = game.team2_id as number | null;
+      const pid  = Number(p.picked_team_id);
+      const pid2 = Number(p.picked_team_id_2);
+      const resolvedId = (t1 && (t1 === pid || t1 === pid2)) ? t1
+                       : (t2 && (t2 === pid || t2 === pid2)) ? t2
+                       : null;
+      if (resolvedId) {
+        await svc.from("picks")
+          .update({ picked_team_id: resolvedId, picked_team_id_2: null })
+          .eq("id", p.id);
+      }
+    }
+    if (batch.length < PAGE_SIZE) break;
+    page++;
+  }
+
+  // Recalculate bracket totals
+  // Points per correct pick = 2^(round - 1): Round 1 = 1pt, Round 2 = 2pt, etc.
   const { data: brackets } = await svc
     .from("brackets")
     .select("id")
     .eq("sport", sport)
     .eq("year", year);
 
-  // ── Resolve combo picks where the play-in winner is now known ─────────────
-  // When a round 2 game's team slot has been filled (sync-bracket ran after the
-  // play-in), update any picks that still carry picked_team_id_2 for that game
-  // to a single resolved team (the one that actually entered the game).
-  const { data: comboPicks } = await svc
-    .from("picks")
-    .select("id, picked_team_id, picked_team_id_2, games(id, team1_id, team2_id, sport, year)")
-    .not("picked_team_id_2", "is", null);
+  const bracketIds = (brackets ?? []).map((b: any) => b.id as number);
+  let recalculatedBrackets = 0;
 
-  for (const p of (comboPicks ?? [])) {
-    const game = (p as any).games;
-    if (!game || game.sport !== sport || game.year !== year) continue;
-    const t1 = game.team1_id as number | null;
-    const t2 = game.team2_id as number | null;
-    const pid  = p.picked_team_id as number;
-    const pid2 = (p as any).picked_team_id_2 as number;
-    let resolvedId: number | null = null;
-    if (t1 && (t1 === pid || t1 === pid2)) resolvedId = t1;
-    else if (t2 && (t2 === pid || t2 === pid2)) resolvedId = t2;
-    if (resolvedId) {
-      await svc.from("picks")
-        .update({ picked_team_id: resolvedId, picked_team_id_2: null })
-        .eq("id", p.id);
+  console.log(`processSport(${sport}): ${bracketIds.length} brackets, ${updatedGames} game updates, ${gameErrors.length} errors`);
+
+  if (bracketIds.length > 0) {
+    const allPicks: any[] = [];
+    page = 0;
+    while (true) {
+      const { data: batch, error: pickErr } = await svc
+        .from("picks")
+        .select("bracket_id, picked_team_id, picked_team_id_2, games(round, winner_id)")
+        .in("bracket_id", bracketIds)
+        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+      if (pickErr) { console.error(`processSport(${sport}): picks page ${page} error: ${pickErr.message}`); break; }
+      if (!batch || batch.length === 0) break;
+      allPicks.push(...batch);
+      if (batch.length < PAGE_SIZE) break;
+      page++;
+    }
+
+    const pointsByBracket = new Map<number, number>();
+    for (const p of allPicks) {
+      const game = p.games;
+      if (!game?.winner_id) continue;
+      const roundPoints = Math.pow(2, Math.max(0, Number(game.round) - 1));
+      const winnerId    = Number(game.winner_id);
+      const picked1     = Number(p.picked_team_id);
+      const picked2     = p.picked_team_id_2 != null ? Number(p.picked_team_id_2) : null;
+      if (picked1 === winnerId || picked2 === winnerId) {
+        pointsByBracket.set(p.bracket_id, (pointsByBracket.get(p.bracket_id) ?? 0) + roundPoints);
+      }
+    }
+
+    for (const b of (brackets ?? [])) {
+      const pts = pointsByBracket.get(b.id) ?? 0;
+      const { error } = await svc.from("brackets").update({ total_points: pts }).eq("id", b.id);
+      if (!error) recalculatedBrackets++;
     }
   }
 
-  // ── Fetch picks (after resolution) and recalculate points ─────────────────
-  const { data: allPickRows } = await svc
-    .from("picks")
-    .select("bracket_id, game_id, picked_team_id, picked_team_id_2, games(round, winner_id)")
-    .in("bracket_id", (brackets ?? []).map((b: any) => b.id));
+  return { updatedGames, recalculatedBrackets, gameErrors };
+}
 
-  const pointsByBracket = new Map<number, number>();
-  for (const p of (allPickRows ?? [])) {
-    const game = (p as any).games;
-    if (!game) continue;
-    const round       = game.round as number;
-    const roundPoints = Math.pow(2, round - 1);
-    const pid2        = (p as any).picked_team_id_2 as number | null;
-    if (game.winner_id &&
-        (p.picked_team_id === game.winner_id || pid2 === game.winner_id)) {
-      pointsByBracket.set(p.bracket_id, (pointsByBracket.get(p.bracket_id) ?? 0) + roundPoints);
-    }
-  }
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-  for (const [bracketId, points] of pointsByBracket.entries()) {
-    await svc.from("brackets").update({ total_points: points }).eq("id", bracketId);
-  }
+// Resolve a team object from the API to its DB id via seo name or short name.
+function resolveTeamId(team: any, teamIdByKey: Map<string, number>): number | null {
+  const seo   = String(team?.seoname ?? team?.seoName ?? team?.SeoName ?? team?.seo ?? "").toLowerCase();
+  const short = String(team?.nameShort ?? team?.NameShort ?? team?.name ?? team?.Name ?? "").toLowerCase();
+  return (seo && teamIdByKey.get(seo)) || (short && teamIdByKey.get(short)) || null;
+}
 
-  return new Response(
-    JSON.stringify({ success: true, updatedGames, bracketsRecalculated: brackets?.length ?? 0 }),
-    { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } },
-  );
-});
+// Return a numeric score or null; treats empty-string API values as null.
+function parseScore(val: any): number | null {
+  if (val === null || val === undefined || val === "") return null;
+  const n = Number(val);
+  return isNaN(n) ? null : n;
+}
 
-function jsonError(message: string, status: number) {
+function jsonError(message: string, status: number): Response {
   return new Response(JSON.stringify({ error: message }), {
     status,
     headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
