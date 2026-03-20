@@ -164,30 +164,14 @@
             const user = userMap.get(uid);
 
             // Compute possible points for this bracket
-            let possible = 0;
-            for (const p of (picksByBracket.get(b.id) ?? [])) {
-              const game = p.games;
-              if (!game) continue;
-              const pts = Math.pow(2, game.round - 1);
-              const isCombo = p.picked_team_id_2 != null;
-              if (!game.winner_id) {
-                // Possible if at least one of the picked team(s) hasn't been eliminated
-                if (isCombo) {
-                  if (!eliminated.has(p.picked_team_id) || !eliminated.has(p.picked_team_id_2)) possible += pts;
-                } else {
-                  if (!eliminated.has(p.picked_team_id)) possible += pts;
-                }
-              } else {
-                if (p.picked_team_id === game.winner_id || p.picked_team_id_2 === game.winner_id) possible += pts;
-              }
-            }
+            const possible = computePossible(picksByBracket.get(b.id) ?? [], eliminated);
 
             if (b.sport === "basketball-men") {
               user.menPoints = b.total_points;
-              user.menPossible = possible;
+              user.menPossible = Math.max(user.menPossible ?? 0, possible);
             } else if (b.sport === "basketball-women") {
               user.womenPoints = b.total_points;
-              user.womenPossible = possible;
+              user.womenPossible = Math.max(user.womenPossible ?? 0, possible);
             }
             if (new Date(b.submitted_date) < new Date(user.earliestDate)) {
               user.earliestDate = b.submitted_date;
@@ -225,23 +209,11 @@
 
           standings = (brackets ?? []).map((b, idx) => {
             const picks = picksByBracket.get(b.id) ?? [];
-            let possible = 0;
-            let champPick = "—";
 
+            // Recompute possible for this bracket using helper; compute champ pick separately
+            const possible = computePossible(picks, eliminated);
+            let champPick = "—";
             for (const p of picks) {
-              const game = p.games;
-              if (!game) continue;
-              const pts = Math.pow(2, game.round - 1);
-              const isCombo = p.picked_team_id_2 != null;
-              if (!game.winner_id) {
-                if (isCombo) {
-                  if (!eliminated.has(p.picked_team_id) || !eliminated.has(p.picked_team_id_2)) possible += pts;
-                } else {
-                  if (!eliminated.has(p.picked_team_id)) possible += pts;
-                }
-              } else {
-                if (p.picked_team_id === game.winner_id || p.picked_team_id_2 === game.winner_id) possible += pts;
-              }
               if (p.game_id === champGameId) {
                 if (p.picked_team_id_2 != null) {
                   const n1 = teamById.get(p.picked_team_id)?.name_short ?? "";
@@ -327,7 +299,7 @@
           <td><strong>${rankIcon(s.rank)} ${s.rank}</strong></td>
           <td>${escHtml(s.userName)}</td>
           <td>${escHtml(s.office)}</td>
-          <td>${escHtml(s.department)}</td>
+          <td>${escHtml(deptFullName(s.department))}</td>
           <td>${menPts}</td>
           <td>${womenPts}</td>
           <td><strong>${s.total_points}</strong></td>
@@ -359,10 +331,9 @@
         const rowClass = s.rank === 1 ? "table-warning" : "";
         return `<tr class="${rowClass}">
           <td><strong>${rankIcon(s.rank)} ${s.rank}</strong></td>
-          <td>${escHtml(s.bracket_name)}</td>
           <td>${escHtml(s.userName)}</td>
           <td>${escHtml(s.office)}</td>
-          <td>${escHtml(s.department)}</td>
+          <td>${escHtml(deptFullName(s.department))}</td>
           <td>${escHtml(s.champPick)}</td>
           <td><strong>${s.total_points}</strong></td>
           <td>${s.possible}</td>
@@ -378,7 +349,7 @@
               <table class="table table-striped table-hover">
                 <thead class="table-dark">
                   <tr>
-                    <th>Rank</th><th>Bracket</th><th>User</th><th>Office</th><th>Department</th>
+                    <th>Rank</th><th>User</th><th>Office</th><th>Department</th>
                     <th>Champion Pick</th><th>Points</th><th>Possible</th><th>Submitted</th><th></th>
                   </tr>
                 </thead>
@@ -466,7 +437,7 @@
         return `<div class="alert alert-info">No data available for ${escHtml(label)}.</div>`;
       }
       const rows = standings.map(s => `<tr>
-        <td>${escHtml(s.name)}</td>
+        <td>${escHtml((label === 'Office' ? officeName(s.name) : deptFullName(s.name)))}</td>
         <td>${s.brackets}</td>
         <td>${s.avgPoints}</td>
         <td>${s.topWomen !== null ? s.topWomen : '<span class="text-muted">—</span>'}</td>
@@ -493,6 +464,56 @@
 
     function escHtml(str) {
       return String(str ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    function deptFullName(code) {
+      if (code == null) return code;
+      if (code === "(No Department)") return code;
+      const map = {
+        DSA: 'DS - Apps',
+        DSO: 'DS - Other',
+        TF: 'Tax/Finance',
+        HR: 'HR/HRIS',
+        LOG: 'Logistics',
+        ENG: 'Engineering',
+        LEGAL: 'Legal',
+        OTHER: 'Other'
+      };
+      return map[code] ?? code;
+    }
+
+        function officeName(code) {
+      if (code == null) return code;
+      const map = {
+        FRO: 'Fording River',
+        VHO: 'Vancouver',
+        CGO: 'Calgary',
+        EVO: 'Elkview',
+        LCO: 'Line Creek',
+        SPO: 'Sparwood'
+      };
+      return map[code] ?? code;
+    }
+
+    function computePossible(picks, eliminated) {
+      let possible = 0;
+      for (const p of (picks ?? [])) {
+        const game = p.games;
+        if (!game) continue;
+        const pts = Math.pow(2, game.round - 1);
+        const isCombo = p.picked_team_id_2 != null;
+        if (!game.winner_id) {
+          // Possible if at least one of the picked team(s) hasn't been eliminated
+          if (isCombo) {
+            if (!eliminated.has(p.picked_team_id) || !eliminated.has(p.picked_team_id_2)) possible += pts;
+          } else {
+            if (!eliminated.has(p.picked_team_id)) possible += pts;
+          }
+        } else {
+          if (p.picked_team_id === game.winner_id || p.picked_team_id_2 === game.winner_id) possible += pts;
+        }
+      }
+      return possible;
     }
   </script>
 </body>
