@@ -47,7 +47,7 @@
   <script src="js/auth.js"></script>
   <script>
     const params = new URLSearchParams(window.location.search);
-    const sport = params.get("sport") || "groups";
+    const sport = params.get("sport") || "overall";
     const isOverall = sport === "overall";
     const isGroups = sport === "groups";
 
@@ -121,16 +121,31 @@
           if (g.team2_id && g.team2_id !== g.winner_id) eliminated.add(g.team2_id);
         }
 
-        // Fetch picks for all relevant brackets
+        // Fetch picks for all relevant brackets.
+        // Use chunked requests to avoid large `.in()` lists or URL size limits in Supabase.
         const bracketIds = (brackets ?? []).map((b) => b.id);
         let allPicks = [];
         if (bracketIds.length) {
-          const { data: picks, error: pErr } = await supabase
-            .from("picks")
-            .select("bracket_id, game_id, picked_team_id, picked_team_id_2, games(round, winner_id, team1_id, team2_id)")
-            .in("bracket_id", bracketIds);
-          if (pErr) throw pErr;
-          allPicks = picks ?? [];
+          const CHUNK = 500; // still chunk bracket id list if very large
+          const PAGE_SIZE = 1000; // page size for Supabase range
+          for (let i = 0; i < bracketIds.length; i += CHUNK) {
+            const chunk = bracketIds.slice(i, i + CHUNK);
+            let page = 0;
+            while (true) {
+              const from = page * PAGE_SIZE;
+              const to = (page + 1) * PAGE_SIZE - 1;
+              const { data: picks, error: pErr } = await supabase
+                .from("picks")
+                .select("bracket_id, game_id, picked_team_id, picked_team_id_2, games(round, winner_id, team1_id, team2_id)")
+                .in("bracket_id", chunk)
+                .range(from, to);
+              if (pErr) throw pErr;
+              if (!picks || picks.length === 0) break;
+              allPicks.push(...picks);
+              if (picks.length < PAGE_SIZE) break;
+              page++;
+            }
+          }
         }
 
         // Group picks by bracket
