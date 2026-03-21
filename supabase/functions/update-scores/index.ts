@@ -36,23 +36,9 @@ Deno.serve(async (req: Request) => {
   const supabaseUrl     = Deno.env.get("SUPABASE_URL")!;
   const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
   const serviceKey      = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const adminCodeEnv    = (Deno.env.get("ADMIN_ACCESS_CODE") ?? "").trim();
 
-  // Require admin access code in `x-admin-code` header or body `code` field.
-  let adminCodeBody = "";
-  try {
-    const raw = await req.text();
-    if (raw) {
-      try { adminCodeBody = String(JSON.parse(raw)?.code ?? ""); }
-      catch { adminCodeBody = new URLSearchParams(raw).get("code") ?? ""; }
-    }
-  } catch { /* ignore read errors */ }
-
-  const providedCode = (req.headers.get("x-admin-code") ?? adminCodeBody).trim();
-  if (!providedCode || !adminCodeEnv || providedCode !== adminCodeEnv) {
-    return jsonError("Invalid admin code", 401);
-  }
-
+  // NOTE: auth checks removed — this function will run for any caller.
+  // If you want to re-enable protection later, restore the admin-code check.
   const svc = createClient(supabaseUrl, serviceKey);
 
   // ── Process both sports in parallel ──────────────────────────────────────
@@ -210,13 +196,42 @@ async function processSport(svc: any, sport: string, year: number): Promise<Spor
     }
 
     const pointsByBracket = new Map<number, number>();
+
+    // Normalize rounds and detect play-in combo picks.
+    const roundValues = allPicks.map((p: any) => Number(p.games?.round ?? 0)).filter((r: number) => r > 0);
+    const minRound = roundValues.length > 0 ? Math.min(...roundValues) : 1;
+
+    // Detect explicit play-in (combo) round: the smallest round where a pick used picked_team_id_2.
+    const playInRounds = allPicks
+      .filter((p: any) => p.picked_team_id_2 != null)
+      .map((p: any) => Number(p.games?.round ?? 0))
+      .filter((r: number) => r > 0);
+    const playInRound = playInRounds.length > 0 ? Math.min(...playInRounds) : null;
+
     for (const p of allPicks) {
       const game = p.games;
       if (!game?.winner_id) continue;
-      const roundPoints = Math.pow(2, Math.max(0, Number(game.round) - 1));
-      const winnerId    = Number(game.winner_id);
-      const picked1     = Number(p.picked_team_id);
-      const picked2     = p.picked_team_id_2 != null ? Number(p.picked_team_id_2) : null;
+      const roundNum = Number(game.round) || minRound;
+
+      let roundPoints = 0;
+      if (playInRound != null) {
+        // If a play-in round exists, that round scores 0.
+        // First full round = playInRound + 1 -> 1 point, then doubles each round.
+        if (roundNum === playInRound) {
+          roundPoints = 0;
+        } else {
+          const k = roundNum - playInRound; // k=1 -> first full round
+          roundPoints = Math.pow(2, Math.max(0, k - 1));
+        }
+      } else {
+        // No play-in: minRound is the first full round worth 1 point.
+        const k = roundNum - minRound; // k=0 -> first full round
+        roundPoints = Math.pow(2, Math.max(0, k));
+      }
+
+      const winnerId = Number(game.winner_id);
+      const picked1   = Number(p.picked_team_id);
+      const picked2   = p.picked_team_id_2 != null ? Number(p.picked_team_id_2) : null;
       if (picked1 === winnerId || picked2 === winnerId) {
         pointsByBracket.set(p.bracket_id, (pointsByBracket.get(p.bracket_id) ?? 0) + roundPoints);
       }
