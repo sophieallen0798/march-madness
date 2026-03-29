@@ -181,18 +181,43 @@ async function processSport(svc: any, sport: string, year: number): Promise<Spor
 
   if (bracketIds.length > 0) {
     const allPicks: any[] = [];
-    page = 0;
-    while (true) {
-      const { data: batch, error: pickErr } = await svc
-        .from("picks")
-        .select("bracket_id, picked_team_id, picked_team_id_2, games(round, winner_id)")
-        .in("bracket_id", bracketIds)
-        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
-      if (pickErr) { console.error(`processSport(${sport}): picks page ${page} error: ${pickErr.message}`); break; }
-      if (!batch || batch.length === 0) break;
-      allPicks.push(...batch);
-      if (batch.length < PAGE_SIZE) break;
-      page++;
+    const CHUNK = 500; // keep `.in()` lists reasonably small to avoid URL/DB limits
+    for (let i = 0; i < bracketIds.length; i += CHUNK) {
+      const chunk = bracketIds.slice(i, i + CHUNK);
+      const chunkIndex = Math.floor(i / CHUNK);
+      let ppage = 0;
+      while (true) {
+        const { data: batch, error: pickErr } = await svc
+          .from("picks")
+          .select("bracket_id, picked_team_id, picked_team_id_2, games(round, winner_id)")
+          .in("bracket_id", chunk)
+          .range(ppage * PAGE_SIZE, (ppage + 1) * PAGE_SIZE - 1);
+        if (pickErr) { console.error(`processSport(${sport}): picks page ${ppage} error: ${pickErr.message}`); break; }
+        if (!batch || batch.length === 0) break;
+        console.log(`processSport(${sport}): fetched picks chunk=${chunkIndex} page=${ppage} count=${batch.length}`);
+        allPicks.push(...batch);
+        if (batch.length < PAGE_SIZE) break;
+        ppage++;
+      }
+    }
+
+    // Debug: summary of picks fetched
+    try {
+      const picksWithWinner = allPicks.filter((p: any) => p.games && p.games.winner_id != null).length;
+      const roundCounts: Record<string, number> = {};
+      for (const p of allPicks) {
+        const r = String(Number(p.games?.round ?? 0));
+        roundCounts[r] = (roundCounts[r] || 0) + 1;
+      }
+      const missingWinnerSamples = allPicks
+        .filter((p: any) => p.games && (p.games.winner_id == null))
+        .slice(0, 8)
+        .map((p: any) => ({ bracket_id: p.bracket_id, game_round: p.games?.round, winner_id: p.games?.winner_id }));
+
+      console.log(`processSport(${sport}): totalPicks=${allPicks.length}, picksWithWinner=${picksWithWinner}, roundCounts=${JSON.stringify(roundCounts)}`);
+      if (missingWinnerSamples.length) console.log(`processSport(${sport}): sample picks with missing winner_id: ${JSON.stringify(missingWinnerSamples)}`);
+    } catch (e) {
+      console.error(`processSport(${sport}): error while logging picks summary: ${e?.message ?? e}`);
     }
 
     const pointsByBracket = new Map<number, number>();
@@ -201,32 +226,44 @@ async function processSport(svc: any, sport: string, year: number): Promise<Spor
     const roundValues = allPicks.map((p: any) => Number(p.games?.round ?? 0)).filter((r: number) => r > 0);
     const minRound = roundValues.length > 0 ? Math.min(...roundValues) : 1;
 
-    // Detect explicit play-in (combo) round: the smallest round where a pick used picked_team_id_2.
+    // Detect play-in usage: find the smallest round where a pick used picked_team_id_2.
     const playInRounds = allPicks
       .filter((p: any) => p.picked_team_id_2 != null)
       .map((p: any) => Number(p.games?.round ?? 0))
       .filter((r: number) => r > 0);
-    const playInRound = playInRounds.length > 0 ? Math.min(...playInRounds) : null;
+    const minPlayInRound = playInRounds.length > 0 ? Math.min(...playInRounds) : null;
 
+    // Build ordered distinct rounds seen in picks
+    const roundsOrdered = Array.from(new Set(roundValues)).sort((a, b) => a - b);
+    // Only treat a play-in if the earliest round contains combo (picked_team_id_2)
+    const playInExists = minPlayInRound != null && roundsOrdered.length > 0 && minPlayInRound === roundsOrdered[0];
+
+    console.log(`processSport(${sport}): minRound=${minRound}, minPlayInRound=${minPlayInRound}, roundsOrdered=${JSON.stringify(roundsOrdered)}, playInExists=${playInExists}`);
+
+    let skippedNoWinner = 0;
+    const awardCountsByRound: Record<number, number> = {};
+    const awardPointsByRound: Record<number, number> = {};
+    const awardedSamples: Array<any> = [];
     for (const p of allPicks) {
       const game = p.games;
-      if (!game?.winner_id) continue;
+      if (!game?.winner_id) { skippedNoWinner++; continue; }
       const roundNum = Number(game.round) || minRound;
 
+      // Determine round index within ordered rounds and compute points.
+      const roundIndex = roundsOrdered.indexOf(roundNum);
       let roundPoints = 0;
-      if (playInRound != null) {
-        // If a play-in round exists, that round scores 0.
-        // First full round = playInRound + 1 -> 1 point, then doubles each round.
-        if (roundNum === playInRound) {
+      if (roundIndex === -1) {
+        // unexpected: fallback to old calculation
+        const k = roundNum - minRound;
+        roundPoints = Math.pow(2, Math.max(0, k));
+      } else {
+        if (playInExists && roundIndex === 0) {
+          // earliest round is play-in -> scores 0
           roundPoints = 0;
         } else {
-          const k = roundNum - playInRound; // k=1 -> first full round
-          roundPoints = Math.pow(2, Math.max(0, k - 1));
+          const scoringIndex = roundIndex - (playInExists ? 1 : 0); // first full round -> 0
+          roundPoints = Math.pow(2, Math.max(0, scoringIndex));
         }
-      } else {
-        // No play-in: minRound is the first full round worth 1 point.
-        const k = roundNum - minRound; // k=0 -> first full round
-        roundPoints = Math.pow(2, Math.max(0, k));
       }
 
       const winnerId = Number(game.winner_id);
@@ -234,6 +271,9 @@ async function processSport(svc: any, sport: string, year: number): Promise<Spor
       const picked2   = p.picked_team_id_2 != null ? Number(p.picked_team_id_2) : null;
       if (picked1 === winnerId || picked2 === winnerId) {
         pointsByBracket.set(p.bracket_id, (pointsByBracket.get(p.bracket_id) ?? 0) + roundPoints);
+        awardCountsByRound[roundNum] = (awardCountsByRound[roundNum] || 0) + 1;
+        awardPointsByRound[roundNum] = (awardPointsByRound[roundNum] || 0) + roundPoints;
+        if (awardedSamples.length < 8) awardedSamples.push({ bracket_id: p.bracket_id, round: roundNum, pts: roundPoints });
       }
     }
 
@@ -242,6 +282,9 @@ async function processSport(svc: any, sport: string, year: number): Promise<Spor
       const { error } = await svc.from("brackets").update({ total_points: pts }).eq("id", b.id);
       if (!error) recalculatedBrackets++;
     }
+    console.log(`processSport(${sport}): scoring complete, skippedPicksNoWinner=${skippedNoWinner}, recalculatedBrackets=${recalculatedBrackets}`);
+    console.log(`processSport(${sport}): awardedCounts=${JSON.stringify(awardCountsByRound)}, awardedPoints=${JSON.stringify(awardPointsByRound)}`);
+    if (awardedSamples.length) console.log(`processSport(${sport}): sample awarded picks: ${JSON.stringify(awardedSamples)}`);
   }
 
   return { updatedGames, recalculatedBrackets, gameErrors };

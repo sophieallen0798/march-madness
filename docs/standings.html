@@ -29,6 +29,14 @@
           <input class="form-check-input" type="checkbox" id="buyInToggle" role="switch">
           <label class="form-check-label" for="buyInToggle">Buy-in only</label>
         </div>
+        <div class="d-flex align-items-center gap-2">
+          <select id="officeFilter" class="form-select form-select-sm" style="min-width:10rem;">
+            <option value="__all__">All Offices</option>
+          </select>
+          <select id="deptFilter" class="form-select form-select-sm" style="min-width:10rem;">
+            <option value="__all__">All Departments</option>
+          </select>
+        </div>
       </div>
     </div>
 
@@ -77,6 +85,10 @@
       }
 
       document.getElementById("buyInToggle").addEventListener("change", () => renderStandings(allStandingsData));
+      const officeFilterEl = document.getElementById('officeFilter');
+      const deptFilterEl = document.getElementById('deptFilter');
+      if (officeFilterEl) officeFilterEl.addEventListener('change', () => renderStandings(allStandingsData));
+      if (deptFilterEl) deptFilterEl.addEventListener('change', () => renderStandings(allStandingsData));
 
       await loadStandings();
     });
@@ -261,6 +273,7 @@
         allStandingsData = standings;
         loadingEl.classList.add("d-none");
         contentEl.classList.remove("d-none");
+        populateFiltersFromStandings(standings);
         renderStandings(standings);
 
       } catch (err) {
@@ -274,7 +287,17 @@
     function renderStandings(standings) {
       const contentEl = document.getElementById("standings-content");
       const buyInOnly = document.getElementById("buyInToggle").checked;
-      const filtered = buyInOnly ? standings.filter(s => s.buyIn) : standings;
+      let filtered = standings;
+      if (buyInOnly) filtered = filtered.filter(s => s.buyIn);
+
+      const officeVal = document.getElementById('officeFilter')?.value;
+      if (officeVal && officeVal !== '__all__') {
+        filtered = filtered.filter(s => (s.office || '(No Office)') === officeVal);
+      }
+      const deptVal = document.getElementById('deptFilter')?.value;
+      if (deptVal && deptVal !== '__all__') {
+        filtered = filtered.filter(s => (s.department || '(No Department)') === deptVal);
+      }
 
       if (!filtered.length) {
         const label = sport === "basketball-women" ? "Women's" : sport === "basketball-men" ? "Men's" : "Overall";
@@ -283,9 +306,7 @@
         } else {
           contentEl.innerHTML = `
             <div class="alert alert-info">
-              <strong>No brackets submitted yet for ${label}${label !== "Overall" ? " Basketball" : ""}.</strong>
-              <p>Be the first to submit your bracket!</p>
-              ${sport !== "overall" ? `<a href="submit-bracket.html?sport=${sport}" class="btn ${sport === "basketball-men" ? "btn-primary" : "btn-primary"}">Submit Bracket</a>` : ""}
+              <strong>No brackets for these filters.</strong>
             </div>`;
         }
         return;
@@ -295,6 +316,27 @@
         renderOverallTable(filtered, contentEl);
       } else {
         renderSportTable(filtered, contentEl);
+      }
+    }
+
+    function populateFiltersFromStandings(standings) {
+      const officeSet = new Set();
+      const deptSet = new Set();
+      for (const s of (standings ?? [])) {
+        officeSet.add(s.office || '(No Office)');
+        deptSet.add(s.department || '(No Department)');
+      }
+      const officeEl = document.getElementById('officeFilter');
+      const deptEl = document.getElementById('deptFilter');
+      if (officeEl) {
+        const prev = officeEl.value;
+        officeEl.innerHTML = '<option value="__all__">All Offices</option>' + Array.from(officeSet).sort().map(o => `<option value="${escHtml(o)}">${escHtml(officeName(o) || o)}</option>`).join('');
+        if (Array.from(officeSet).includes(prev)) officeEl.value = prev; else officeEl.value = '__all__';
+      }
+      if (deptEl) {
+        const prev = deptEl.value;
+        deptEl.innerHTML = '<option value="__all__">All Departments</option>' + Array.from(deptSet).sort().map(d => `<option value="${escHtml(d)}">${escHtml(deptFullName(d))}</option>`).join('');
+        if (Array.from(deptSet).includes(prev)) deptEl.value = prev; else deptEl.value = '__all__';
       }
     }
 

@@ -308,16 +308,21 @@ function scoringTeamRowHtml(
   actualWinnerId,
   pickedTeamId2 = null,
   pickStatsForGame = null,
+  projectedTeam1Id = null,
+  projectedTeam2Id = null,
+  actualTeam1Id = null,
+  actualTeam2Id = null,
+  markBothIncorrect = false,
 ) {
   const isLast = slot === 2;
   const border = isLast ? "" : "border-bottom";
 
   // If a game slot is TBD but the user already made a pick for this game,
-  // show their pick so they can see what they selected.
+  // show their pick (or a placeholder) so every game displays two rows.
   let effectiveTeam = team;
   if (!effectiveTeam) {
-    // For unknown matchups, only render the pick once (slot 1).
-    if (slot === 1 && (pickedTeamId || pickedTeamId2)) {
+    if (slot === 1) {
+      // Slot 1: prefer combo (if both picks exist), then primary pick, then secondary.
       if (pickedTeamId && pickedTeamId2) {
         const t1 = bracketTeamById.get(pickedTeamId);
         const t2 = bracketTeamById.get(pickedTeamId2);
@@ -328,6 +333,21 @@ function scoringTeamRowHtml(
       }
       if (!effectiveTeam && pickedTeamId2) {
         effectiveTeam = bracketTeamById.get(pickedTeamId2);
+      }
+      if (!effectiveTeam) {
+        effectiveTeam = { id: null, name_short: "TBD", seed: "", logo_url: null };
+      }
+    } else {
+      // Slot 2: show secondary pick if present, otherwise show a TBD placeholder
+      if (pickedTeamId2) {
+        effectiveTeam = bracketTeamById.get(pickedTeamId2) ?? {
+          id: pickedTeamId2,
+          name_short: "TBD",
+          seed: "",
+          logo_url: null,
+        };
+      } else {
+        effectiveTeam = { id: null, name_short: "TBD", seed: "", logo_url: null };
       }
     }
   }
@@ -360,8 +380,16 @@ function scoringTeamRowHtml(
       pickedTeamId2 === effectiveTeam.id1 ||
       pickedTeamId2 === effectiveTeam.id2
     : pickedTeamId === effectiveTeam.id || pickedTeamId2 === effectiveTeam.id;
+
   let pickClass = "";
-  if (isPicked) {
+  // If caller flagged that the user's pick is not one of the actual teams,
+  // mark both rows incorrect for that game.
+  if (actualWinnerId == 1466) {
+    console.log("winning team ", actualWinnerId);
+  }
+  if (markBothIncorrect) {
+    pickClass = "pick-incorrect";
+  } else if (isPicked) {
     if (actualWinnerId === null || actualWinnerId === undefined) {
       pickClass = "pick-pending";
     } else {
@@ -429,6 +457,11 @@ function scoringGameCardHtml(
   pickedTeamId,
   pickedTeamId2 = null,
   pickStatsForGame = null,
+  projectedTeam1Id = null,
+  projectedTeam2Id = null,
+  actualTeam1Id = null,
+  actualTeam2Id = null,
+  markBothIncorrect = false,
 ) {
   const {
     id,
@@ -461,6 +494,11 @@ function scoringGameCardHtml(
             winner_id,
             pickedTeamId2,
             pickStatsForGame,
+            projectedTeam1Id,
+            projectedTeam2Id,
+            actualTeam1Id,
+            actualTeam2Id,
+            markBothIncorrect,
           )}
           ${scoringTeamRowHtml(
             team2,
@@ -469,6 +507,11 @@ function scoringGameCardHtml(
             winner_id,
             pickedTeamId2,
             pickStatsForGame,
+            projectedTeam1Id,
+            projectedTeam2Id,
+            actualTeam1Id,
+            actualTeam2Id,
+            markBothIncorrect,
           )}
           ${statusHtml}
         </div>
@@ -646,12 +689,60 @@ function renderBracket(
   const labelMap =
     sport === "basketball-women" ? REGION_CODE_MAP_W : REGION_CODE_MAP;
 
+  // If we're rendering a scoring view, project the user's picks forward so
+  // that future matchups show the two teams the user selected (not "TBD").
+  function buildProjectedGames(gamesList, picksPrimary, picksSecondary) {
+    // Map bracket_position -> cloned game object so we can attach temporary projected slots
+    const posToGame = new Map(gamesList.map((g) => [g.bracket_position_id, { ...g }]));
+
+    const maxRound = Math.max(...gamesList.map((g) => g.round || 0));
+    for (let round = 1; round <= maxRound; round++) {
+      for (const g of gamesList.filter((x) => x.round === round)) {
+        const winnerId = picksPrimary.get(g.id) ?? null;
+        if (!winnerId) continue;
+        const winnerTeam = bracketTeamById.get(winnerId) ?? { id: winnerId, name_short: "TBD", seed: "", logo_url: null };
+        const vp = g.victor_bracket_position_id;
+        if (!vp) continue;
+        // find feeder positions that feed into vp
+        const feeders = gamesList
+          .filter((x) => x.victor_bracket_position_id === vp)
+          .map((x) => x.bracket_position_id);
+        let slot = 1;
+        if (feeders.length === 2) {
+          feeders.sort((a, b) => a - b);
+          slot = g.bracket_position_id === feeders[0] ? 1 : 2;
+        } else {
+          slot = g.bracket_position_id < vp ? 1 : 2;
+        }
+        const target = posToGame.get(vp);
+        if (!target) continue;
+        if (slot === 1) target._projTeam1 = winnerTeam;
+        else target._projTeam2 = winnerTeam;
+      }
+    }
+
+    // Build final projected games array where actual teams take precedence.
+    // Remove any temporary projection markers as we produce the final list.
+    return gamesList.map((g) => {
+      const pg = posToGame.get(g.bracket_position_id) ?? { ...g };
+      const team1 = g.team1 ?? pg._projTeam1 ?? null;
+      const team2 = g.team2 ?? pg._projTeam2 ?? null;
+      delete pg._projTeam1;
+      delete pg._projTeam2;
+      return { ...g, team1, team2 };
+    });
+  }
+
   // Build a set of region names that appear for more than one sectionId so we can
   // disambiguate them (e.g. women's 2025 has two "Spokane" pods and two "Birmingham" pods).
   const allRegionCodes = [...LEFT_REGIONS, ...RIGHT_REGIONS];
   const regionNameCount = {};
+  const projectedGames = isEditable
+    ? games
+    : buildProjectedGames(games, picksMap, picksMap2);
+
   allRegionCodes.forEach((c) => {
-    const s = games.find((g) => g.sectionId === c);
+    const s = projectedGames.find((g) => g.sectionId === c);
     const name = s?.region
       ? titleCase(s.region)
       : titleCase(labelMap[String(c)] ?? String(c));
@@ -664,7 +755,7 @@ function renderBracket(
   const duplicateUseCount = {};
 
   function regionLabel(code) {
-    const sample = games.find((g) => g.sectionId === code);
+    const sample = projectedGames.find((g) => g.sectionId === code);
     const base = sample?.region
       ? titleCase(sample.region)
       : titleCase(labelMap[String(code)] ?? String(code));
@@ -675,21 +766,46 @@ function renderBracket(
     return base;
   }
 
+  // Helper: check whether the user's pick(s) for a game are absent from the
+  // game's actual teams. Returns true when a pick exists but neither pick matches team1/team2.
+  function isPickOutsideActual(originalGame, pickedTeamId, pickedTeamId2) {
+    const pickPresent = pickedTeamId != null || pickedTeamId2 != null;
+    if (!pickPresent) return false;
+    const inActual = (pickedTeamId != null && (originalGame.team1?.id === pickedTeamId || originalGame.team2?.id === pickedTeamId))
+      || (pickedTeamId2 != null && (originalGame.team1?.id === pickedTeamId2 || originalGame.team2?.id === pickedTeamId2));
+    return (originalGame.team1 || originalGame.team2) && !inActual;
+  }
+
   function renderGame(game) {
     if (isEditable) return editableGameCardHtml(game);
     const pickedTeamId = picksMap.get(game.id) ?? null;
     const pickedTeamId2 = picksMap2.get(game.id) ?? null;
     const pickStatsForGame = pickStats.get(game.id) ?? null;
+    // Determine if the user's pick for this game is NOT among the actual teams
+    // (as opposed to the projected teams). In that case mark both rows incorrect.
+    const originalGame = games.find((g) => g.id === game.id) || {};
+    const markBothIncorrect = isPickOutsideActual(originalGame, pickedTeamId, pickedTeamId2);
+    
+    // Decide whether to display actual teams (for later rounds) or projected picks.
+    const useActualDisplay = (originalGame.round || game.round) >= 3 && (originalGame.team1 || originalGame.team2);
+    const displayGame = useActualDisplay ? originalGame : game;
+    const projectedTeam1Id = game.team1?.id ?? null;
+    const projectedTeam2Id = game.team2?.id ?? null;
     return scoringGameCardHtml(
-      game,
+      displayGame,
       pickedTeamId,
       pickedTeamId2,
       pickStatsForGame,
+      projectedTeam1Id,
+      projectedTeam2Id,
+      originalGame.team1?.id ?? null,
+      originalGame.team2?.id ?? null,
+      markBothIncorrect,
     );
   }
 
   const regionGames = (code) =>
-    games.filter((g) => !isFinalGame(g) && g.sectionId === code);
+    projectedGames.filter((g) => !isFinalGame(g) && g.sectionId === code);
 
   const leftPanels = LEFT_REGIONS.map((code) =>
     renderRegionPanel(
@@ -710,7 +826,7 @@ function renderBracket(
     ),
   ).join("");
 
-  const finalGames = games.filter(isFinalGame);
+  const finalGames = projectedGames.filter(isFinalGame);
   const finalPanel = finalGames.length
     ? renderFinalPanel(finalGames, renderGame)
     : `<section class="region-panel card shadow-sm region-panel-final"><div class="card-header py-2 text-center">Final Four</div><div class="card-body"><p class="text-muted">Final Four data not yet available.</p></div></section>`;
