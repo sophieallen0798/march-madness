@@ -89,6 +89,16 @@
 .pick-incorrect { background-color: #f8d7da !important; }
 .pick-pending   { background-color: #fff3cd !important; }
 
+/* ── Wrong-pick overlay (team user expected but wasn't in game) ── */
+.wrong-pick-overlay {
+  font-size: 0.72em;
+  line-height: 1.2;
+  color: #dc3545;
+  text-decoration: line-through;
+  opacity: 0.85;
+  padding-bottom: 2px;
+}
+
 .pick-percent {
   min-width: 2.75rem;
   text-align: right;
@@ -103,7 +113,7 @@
   border: 1px solid #ccc;
 }
 .pick-correct-legend   { background-color: #d1e7dd; }
-.pick-incorrect-legend { background-color: #f8d7da; }
+.pick-incorrect-legend { background-color:#dc3545; }
 .pick-pending-legend   { background-color: #fff3cd; }
 
 /* ── Responsive breakpoints ───────────────────────────────── */

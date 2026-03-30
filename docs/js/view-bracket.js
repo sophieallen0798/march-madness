@@ -1,6 +1,5 @@
-// bracket-render.js
-// Shared bracket rendering and interaction logic.
-// Used by both submit-bracket.html (editable) and my-bracket.html (scoring/read-only).
+// view-bracket.js
+// Read-only bracket rendering for my-bracket.html.
 
 // ────────────────────────────────────────────────────────────────
 // REGION CODE MAPS  (numeric region code → display label)
@@ -226,184 +225,139 @@ function infoTeamRowHtml(team, slot, winnerId) {
     </div>`;
 }
 
-/**
- * Renders a single team row used by the editable (submit) bracket.
- * slot: 1 or 2.
- */
-function editableTeamRowHtml(gameId, team, slot) {
-  if (!team) {
-    return `<div class="team-option placeholder px-3 py-2 border-bottom" data-game-id="${gameId}" data-slot="${slot}">
-              <span class="small text-muted fst-italic">TBD</span>
-            </div>`;
-  }
-  const borderClass = slot === 1 ? "border-bottom" : "";
+function getTeamIdentityKey(team) {
+  if (!team) return null;
   if (team.isCombo) {
-    return `
-      <div class="team-option ${borderClass} form-check m-0 px-3 py-2"
-           data-game-id="${gameId}"
-           data-slot="${slot}"
-           data-team-id="${team.id}"
-           data-team-name="${team.name_short}"
-           data-team-seed=""
-           data-team-logo="">
-        <input class="form-check-input team-radio"
-               type="radio"
-               name="pick_${gameId}"
-               value="${team.id}"
-               id="g${gameId}_s${slot}"
-               autocomplete="off" />
-        <label for="g${gameId}_s${slot}" class="form-check-label w-100 ms-2" style="cursor:pointer;">
-          <span class="d-flex align-items-center gap-2">
-            <span class="badge bg-secondary text-white small">Play-In</span>
-            <span>${team.name_short}</span>
-          </span>
-        </label>
-      </div>`;
+    const a = Math.min(team.id1, team.id2);
+    const b = Math.max(team.id1, team.id2);
+    return `combo:${a}:${b}`;
   }
+  if (team.id != null) return `team:${team.id}`;
+  return `name:${team.name_short ?? ""}`;
+}
+
+function teamMatchesParticipant(team, candidate) {
+  if (!team || !candidate) return false;
+  if (team.isCombo && candidate.isCombo) {
+    return (
+      team.id1 === candidate.id1 ||
+      team.id1 === candidate.id2 ||
+      team.id2 === candidate.id1 ||
+      team.id2 === candidate.id2
+    );
+  }
+  if (team.isCombo) {
+    return candidate.id === team.id1 || candidate.id === team.id2;
+  }
+  if (candidate.isCombo) {
+    return team.id === candidate.id1 || team.id === candidate.id2;
+  }
+  return team.id != null && candidate.id != null && team.id === candidate.id;
+}
+
+function uniqueTeams(teams) {
+  const seen = new Set();
+  return teams.filter((team) => {
+    const key = getTeamIdentityKey(team);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function teamMatchesAny(team, candidates) {
+  return candidates.some((candidate) => teamMatchesParticipant(team, candidate));
+}
+
+function normalizeActualAssignedTeam(team) {
+  if (!team || team.isCombo) return null;
+  return team;
+}
+
+function pickPercentHtml(team, pickStatsForGame) {
+  const totalPicks = pickStatsForGame?.total ?? 0;
+  if (!team || totalPicks <= 0) return "";
+
+  let pickPercent = null;
+  if (team.isCombo) {
+    const a = Math.min(team.id1, team.id2);
+    const b = Math.max(team.id1, team.id2);
+    const key = `${a}:${b}`;
+    const count = pickStatsForGame?.comboCounts?.get(key) ?? 0;
+    pickPercent = Math.round((count / totalPicks) * 100);
+  } else if (team.id != null) {
+    const count = pickStatsForGame?.teamCounts?.get(team.id) ?? 0;
+    pickPercent = Math.round((count / totalPicks) * 100);
+  }
+
+  return pickPercent === null
+    ? ""
+    : `<span class="pick-percent small text-muted">${pickPercent}%</span>`;
+}
+
+function buildTeamLabelHtml(team, boldClass = "") {
   return `
-    <div class="team-option ${borderClass} form-check m-0 px-3 py-2"
-         data-game-id="${gameId}"
-         data-slot="${slot}"
-         data-team-id="${team.id}"
-         data-team-name="${team.name_short}"
-         data-team-seed="${team.seed}"
-         data-team-logo="${team.logo_url ?? ""}">
-      <input class="form-check-input team-radio"
-             type="radio"
-             name="pick_${gameId}"
-             value="${team.id}"
-             id="g${gameId}_s${slot}"
-             autocomplete="off" />
-      <label for="g${gameId}_s${slot}" class="form-check-label w-100 ms-2" style="cursor:pointer;">
-        <span class="d-flex align-items-center gap-2">
-          ${logoHtml(team)}
-          <span class="text-muted small">${team.seed}</span>
-          <span>${team.name_short}</span>
-        </span>
-      </label>
+      <span class="d-flex align-items-center gap-2 w-100">
+        ${logoHtml(team)}
+        <span class="text-muted small">${team.seed ?? ""}</span>
+        <span class="${boldClass}">${team.name_short}</span>
+      </span>`;
+}
+
+function wrongPickOverlayRowHtml(team, addBorder = false) {
+  const border = addBorder ? "border-bottom" : "";
+  return `
+    <div class="team-option-scoring d-flex align-items-center px-3 py-2 wrong-pick-overlay ${border}">
+      ${buildTeamLabelHtml(team)}
     </div>`;
 }
 
 /**
  * Renders a single team row used by the scoring (read-only) bracket.
- * pickedTeamId: the primary team the user picked for this game.
- * actualWinnerId: the confirmed winner (or null).
- * pickedTeamId2: secondary team for a play-in combo pick (or null).
+ * stateClass: visual status class such as pick-correct or pick-pending.
+ * isPicked: whether this row represents a participant the user projected into the game.
  */
 function scoringTeamRowHtml(
   team,
   slot,
-  pickedTeamId,
-  actualWinnerId,
-  pickedTeamId2 = null,
   pickStatsForGame = null,
-  projectedTeam1Id = null,
-  projectedTeam2Id = null,
-  actualTeam1Id = null,
-  actualTeam2Id = null,
-  markBothIncorrect = false,
+  stateClass = "",
+  isPicked = false,
+  wrongPickTeam = null,
 ) {
   const isLast = slot === 2;
   const border = isLast ? "" : "border-bottom";
 
-  // If a game slot is TBD but the user already made a pick for this game,
-  // show their pick (or a placeholder) so every game displays two rows.
-  let effectiveTeam = team;
-  if (!effectiveTeam) {
-    if (slot === 1) {
-      // Slot 1: prefer combo (if both picks exist), then primary pick, then secondary.
-      if (pickedTeamId && pickedTeamId2) {
-        const t1 = bracketTeamById.get(pickedTeamId);
-        const t2 = bracketTeamById.get(pickedTeamId2);
-        if (t1 && t2) effectiveTeam = makeComboTeam(t1, t2);
-      }
-      if (!effectiveTeam && pickedTeamId) {
-        effectiveTeam = bracketTeamById.get(pickedTeamId);
-      }
-      if (!effectiveTeam && pickedTeamId2) {
-        effectiveTeam = bracketTeamById.get(pickedTeamId2);
-      }
-      if (!effectiveTeam) {
-        effectiveTeam = { id: null, name_short: "TBD", seed: "", logo_url: null };
-      }
-    } else {
-      // Slot 2: show secondary pick if present, otherwise show a TBD placeholder
-      if (pickedTeamId2) {
-        effectiveTeam = bracketTeamById.get(pickedTeamId2) ?? {
-          id: pickedTeamId2,
-          name_short: "TBD",
-          seed: "",
-          logo_url: null,
-        };
-      } else {
-        effectiveTeam = { id: null, name_short: "TBD", seed: "", logo_url: null };
-      }
-    }
-  }
+  const wrongPickHtml = wrongPickTeam
+    ? `<div class="wrong-pick-overlay mb-1">${buildTeamLabelHtml(wrongPickTeam)}</div>`
+    : "";
 
-  if (!effectiveTeam) {
+  if (!team) {
     return `<div class="team-option-scoring d-flex align-items-center px-3 py-2 ${border}">
-              <span class="small text-muted fst-italic">TBD</span>
+              <span class="w-100">${wrongPickHtml}<span class="small text-muted fst-italic">TBD</span></span>
             </div>`;
-  }
-
-  const totalPicks = pickStatsForGame?.total ?? 0;
-  let pickPercent = null;
-  if (totalPicks > 0) {
-    if (effectiveTeam.isCombo) {
-      const a = Math.min(effectiveTeam.id1, effectiveTeam.id2);
-      const b = Math.max(effectiveTeam.id1, effectiveTeam.id2);
-      const key = `${a}:${b}`;
-      const count = pickStatsForGame?.comboCounts?.get(key) ?? 0;
-      pickPercent = Math.round((count / totalPicks) * 100);
-    } else if (effectiveTeam.id != null) {
-      const count = pickStatsForGame?.teamCounts?.get(effectiveTeam.id) ?? 0;
-      pickPercent = Math.round((count / totalPicks) * 100);
-    }
-  }
-
-  // For combo teams still in the bracket (play-in not yet resolved), match on either sub-team ID.
-  const isPicked = effectiveTeam.isCombo
-    ? pickedTeamId === effectiveTeam.id1 ||
-      pickedTeamId === effectiveTeam.id2 ||
-      pickedTeamId2 === effectiveTeam.id1 ||
-      pickedTeamId2 === effectiveTeam.id2
-    : pickedTeamId === effectiveTeam.id || pickedTeamId2 === effectiveTeam.id;
-
-  let pickClass = "";
-
-  if (markBothIncorrect) {
-    pickClass = "pick-incorrect";
-  } else if (isPicked) {
-    if (actualWinnerId === null || actualWinnerId === undefined) {
-      pickClass = "pick-pending";
-    } else {
-      const pickedCorrectly =
-        actualWinnerId === pickedTeamId || actualWinnerId === pickedTeamId2;
-      pickClass = pickedCorrectly ? "pick-correct" : "pick-incorrect";
-    }
   }
 
   const checkmark = isPicked
     ? `<span class="badge bg-secondary">&#10003;</span>`
     : "";
   const bold = isPicked ? "fw-bold" : "";
-  const percentHtml =
-    pickPercent === null
-      ? ""
-      : `<span class="pick-percent small text-muted">${pickPercent}%</span>`;
+  const percentHtml = pickPercentHtml(team, pickStatsForGame);
   const trailingHtml =
     percentHtml || checkmark
       ? `<span class="ms-auto d-flex align-items-center gap-2">${percentHtml}${checkmark}</span>`
       : "";
 
   return `
-    <div class="team-option-scoring d-flex align-items-center px-3 py-2 ${border} ${pickClass}">
-      <span class="d-flex align-items-center gap-2 w-100">
-        ${logoHtml(effectiveTeam)}
-        <span class="text-muted small">${effectiveTeam.seed}</span>
-        <span class="${bold}">${effectiveTeam.name_short}</span>
-        ${trailingHtml}
+    <div class="team-option-scoring d-flex align-items-center px-3 py-2 ${border} ${stateClass}">
+      <span class="w-100">
+        ${wrongPickHtml}
+        <span class="d-flex align-items-center gap-2 w-100">
+          ${logoHtml(team)}
+          <span class="text-muted small">${team.seed ?? ""}</span>
+          <span class="${bold}">${team.name_short}</span>
+          ${trailingHtml}
+        </span>
       </span>
     </div>`;
 }
@@ -412,92 +366,83 @@ function scoringTeamRowHtml(
 // RENDER A SINGLE GAME CARD
 // ────────────────────────────────────────────────────────────────
 
-function editableGameCardHtml(game) {
-  const {
-    id,
-    bracket_position_id,
-    victor_bracket_position_id,
-    round,
-    team1,
-    team2,
-  } = game;
-  const tbdClass = !team1 || !team2 ? "tbd" : "";
-  return `
-    <div class="bracket-game"
-         data-game-id="${id}"
-         data-bracket-position="${bracket_position_id}"
-         data-victor-position="${victor_bracket_position_id ?? ""}"
-         data-round="${round}">
-      <div class="matchup card ${tbdClass}">
-        <div class="card-body p-0">
-          ${editableTeamRowHtml(id, team1, 1)}
-          ${editableTeamRowHtml(id, team2, 2)}
-        </div>
-      </div>
-    </div>`;
-}
-
 function scoringGameCardHtml(
   game,
-  pickedTeamId,
-  pickedTeamId2 = null,
   pickStatsForGame = null,
-  projectedTeam1Id = null,
-  projectedTeam2Id = null,
-  actualTeam1Id = null,
-  actualTeam2Id = null,
-  markBothIncorrect = false,
 ) {
   const {
-    id,
     bracket_position_id,
     team1,
     team2,
-    winner_id,
-    game_state,
+    actualTeam1,
+    actualTeam2,
+    projectedTeam1,
+    projectedTeam2,
     start_time,
     round,
   } = game;
-  const tbdClass = !team1 && !team2 ? "tbd" : "";
+
+  const projectedParticipants = uniqueTeams(
+    [projectedTeam1, projectedTeam2].filter(Boolean),
+  );
+  const actualParticipants = uniqueTeams([actualTeam1, actualTeam2].filter(Boolean));
+  const knownActualParticipantCount = actualParticipants.length;
+  const canCompareParticipants = knownActualParticipantCount > 0;
+  const isActualMatchupKnown = knownActualParticipantCount === 2;
+  const displayRows = [
+    {
+      actualTeam: actualTeam1 ?? null,
+      displayTeam: team1,
+      fallbackTeam: projectedTeam1 ?? null,
+      slot: 1,
+    },
+    {
+      actualTeam: actualTeam2 ?? null,
+      displayTeam: team2,
+      fallbackTeam: projectedTeam2 ?? null,
+      slot: 2,
+    },
+  ];
+  const tbdClass = !actualTeam1 && !actualTeam2 ? "tbd" : "";
 
   let statusHtml = "";
-  if (!winner_id && start_time) {
+  if (!canCompareParticipants && start_time) {
     const d = new Date(start_time);
     statusHtml = `<div class="text-center small text-muted py-1 border-top bg-light">${d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</div>`;
-  } else if (!winner_id && (game_state ?? "").toLowerCase() === "live") {
-    statusHtml = `<div class="text-center small fw-bold text-danger py-1 border-top bg-light">LIVE</div>`;
   }
 
   return `
-    <div class="bracket-game scoring-game" data-bracket-position="${bracket_position_id}" data-round="${round ?? ""}" data-winner="${winner_id ?? ""}">
+    <div class="bracket-game scoring-game" data-bracket-position="${bracket_position_id}" data-round="${round ?? ""}">
       <div class="matchup card ${tbdClass}">
         <div class="card-body p-0">
-          ${scoringTeamRowHtml(
-            team1,
-            1,
-            pickedTeamId,
-            winner_id,
-            pickedTeamId2,
-            pickStatsForGame,
-            projectedTeam1Id,
-            projectedTeam2Id,
-            actualTeam1Id,
-            actualTeam2Id,
-            markBothIncorrect,
-          )}
-          ${scoringTeamRowHtml(
-            team2,
-            2,
-            pickedTeamId,
-            winner_id,
-            pickedTeamId2,
-            pickStatsForGame,
-            projectedTeam1Id,
-            projectedTeam2Id,
-            actualTeam1Id,
-            actualTeam2Id,
-            markBothIncorrect,
-          )}
+          ${displayRows
+            .map(({ actualTeam, displayTeam, fallbackTeam, slot }) => {
+              const rowTeam = canCompareParticipants
+                ? actualTeam ?? null
+                : displayTeam ?? fallbackTeam ?? null;
+              const wrongPickTeam =
+                canCompareParticipants &&
+                fallbackTeam &&
+                !teamMatchesAny(fallbackTeam, actualParticipants)
+                  ? fallbackTeam
+                  : null;
+              const isProjectedParticipant =
+                rowTeam && teamMatchesAny(rowTeam, projectedParticipants);
+              let stateClass = "";
+              if (isProjectedParticipant) {
+                if (canCompareParticipants) stateClass = "pick-correct";
+                else stateClass = "pick-pending";
+              }
+              return scoringTeamRowHtml(
+                rowTeam,
+                slot,
+                pickStatsForGame,
+                stateClass,
+                Boolean(isProjectedParticipant),
+                wrongPickTeam,
+              );
+            })
+            .join("")}
           ${statusHtml}
         </div>
       </div>
@@ -590,7 +535,7 @@ function renderFinalPanel(finalGames, renderGameFn) {
   const semifinalLeft = semifinals[0] ?? null;
   const semifinalRight = semifinals[1] ?? null;
   const championship = ordered.find((g) => g.round === 7) ?? null;
-  const champion = championship?.winner;
+  const championName = championship?.winner?.name_short ?? championship?._pickedChampionName ?? "TBD";
 
   const col = (game) =>
     game
@@ -603,7 +548,7 @@ function renderFinalPanel(finalGames, renderGameFn) {
          <div class="bracket-game champion-card mt-3">
            <div class="matchup card">
              <div class="card-body p-2">
-               <div class="text-center small champion-label text-muted">Champion: <span class="fw-bold"><span class="champion-name">${champion ? champion.name_short : "TBD"}</span></span></div>
+               <div class="text-center small champion-label text-muted">Champion: <span class="fw-bold"><span class="champion-name">${championName}</span></span></div>
              </div>
            </div>
          </div>
@@ -653,54 +598,97 @@ function renderPlayInSection(playInGames) {
  *
  * @param {HTMLElement} container              Target element
  * @param {Array}       games                  Enriched game objects (with team1/team2)
- * @param {string}      mode                   "editable" | "scoring"
- * @param {Map}         picksMap               Map<gameId, pickedTeamId> (only for scoring mode)
+ * @param {string}      mode                   Ignored; retained for compatibility
+ * @param {Map}         picksMap               Map<gameId, pickedTeamId>
  * @param {string}      sport                  "basketball-men" | "basketball-women"
- * @param {Map}         picksMap2              Map<gameId, pickedTeamId2> for combo picks (scoring mode)
+ * @param {Map}         picksMap2              Map<gameId, pickedTeamId2> for combo picks
  * @param {Map}         pickStats              Map<gameId, { total, teamCounts, comboCounts }>
  */
 function renderBracket(
   container,
   games,
-  mode = "editable",
+  mode = "scoring",
   picksMap = new Map(),
   sport = "basketball-men",
   picksMap2 = new Map(),
   pickStats = new Map(),
 ) {
-  const isEditable = mode === "editable";
   const labelMap =
     sport === "basketball-women" ? REGION_CODE_MAP_W : REGION_CODE_MAP;
 
-  // If we're rendering a scoring view, project the user's picks forward so
-  // that future matchups show the two teams the user selected (not "TBD").
   function buildProjectedGames(gamesList, picksPrimary, picksSecondary) {
+    function assignAdvancedTeam(targetMap, gamesSource, sourceGame, targetPos, team, field1, field2) {
+      if (!targetPos || !team) return;
+      const feeders = gamesSource
+        .filter((x) => x.victor_bracket_position_id === targetPos)
+        .map((x) => x.bracket_position_id);
+      let slot = 1;
+      if (feeders.length === 2) {
+        feeders.sort((a, b) => a - b);
+        slot = sourceGame.bracket_position_id === feeders[0] ? 1 : 2;
+      } else {
+        slot = sourceGame.bracket_position_id < targetPos ? 1 : 2;
+      }
+      const target = targetMap.get(targetPos);
+      if (!target) return;
+      if (slot === 1) target[field1] = team;
+      else target[field2] = team;
+    }
+
+    function getProjectedWinnerTeam(game) {
+      const primaryId = picksPrimary.get(game.id) ?? null;
+      const secondaryId = picksSecondary.get(game.id) ?? null;
+      if (!primaryId) return null;
+
+      const resolveTeam = (teamId) =>
+        bracketTeamById.get(teamId) ??
+        [game.team1, game.team2, game.winner].find(
+          (team) => team && team.id === teamId,
+        ) ??
+        { id: teamId, name_short: "TBD", seed: "", logo_url: null };
+
+      if (secondaryId) {
+        const team1 = resolveTeam(primaryId);
+        const team2 = resolveTeam(secondaryId);
+        if (team1 && team2) return makeComboTeam(team1, team2);
+      }
+
+      return resolveTeam(primaryId);
+    }
+
     // Map bracket_position -> cloned game object so we can attach temporary projected slots
     const posToGame = new Map(gamesList.map((g) => [g.bracket_position_id, { ...g }]));
 
     const maxRound = Math.max(...gamesList.map((g) => g.round || 0));
     for (let round = 1; round <= maxRound; round++) {
       for (const g of gamesList.filter((x) => x.round === round)) {
-        const winnerId = picksPrimary.get(g.id) ?? null;
-        if (!winnerId) continue;
-        const winnerTeam = bracketTeamById.get(winnerId) ?? { id: winnerId, name_short: "TBD", seed: "", logo_url: null };
-        const vp = g.victor_bracket_position_id;
-        if (!vp) continue;
-        // find feeder positions that feed into vp
-        const feeders = gamesList
-          .filter((x) => x.victor_bracket_position_id === vp)
-          .map((x) => x.bracket_position_id);
-        let slot = 1;
-        if (feeders.length === 2) {
-          feeders.sort((a, b) => a - b);
-          slot = g.bracket_position_id === feeders[0] ? 1 : 2;
-        } else {
-          slot = g.bracket_position_id < vp ? 1 : 2;
-        }
-        const target = posToGame.get(vp);
-        if (!target) continue;
-        if (slot === 1) target._projTeam1 = winnerTeam;
-        else target._projTeam2 = winnerTeam;
+        const actualWinnerTeam = g.winner_id
+          ? bracketTeamById.get(g.winner_id) ??
+            g.winner ??
+            [g.team1, g.team2].find((team) => team && team.id === g.winner_id) ??
+            null
+          : null;
+        assignAdvancedTeam(
+          posToGame,
+          gamesList,
+          g,
+          g.victor_bracket_position_id,
+          actualWinnerTeam,
+          "_actualTeam1",
+          "_actualTeam2",
+        );
+
+        const winnerTeam = getProjectedWinnerTeam(g);
+        if (!winnerTeam) continue;
+        assignAdvancedTeam(
+          posToGame,
+          gamesList,
+          g,
+          g.victor_bracket_position_id,
+          winnerTeam,
+          "_projTeam1",
+          "_projTeam2",
+        );
       }
     }
 
@@ -708,11 +696,27 @@ function renderBracket(
     // Remove any temporary projection markers as we produce the final list.
     return gamesList.map((g) => {
       const pg = posToGame.get(g.bracket_position_id) ?? { ...g };
-      const team1 = g.team1 ?? pg._projTeam1 ?? null;
-      const team2 = g.team2 ?? pg._projTeam2 ?? null;
+      const actualTeam1 =
+        normalizeActualAssignedTeam(g.team1 ?? null) ?? pg._actualTeam1 ?? null;
+      const actualTeam2 =
+        normalizeActualAssignedTeam(g.team2 ?? null) ?? pg._actualTeam2 ?? null;
+      const team1 = actualTeam1 ?? pg._projTeam1 ?? null;
+      const team2 = actualTeam2 ?? pg._projTeam2 ?? null;
+      const projectedTeam1 = pg._projTeam1 ?? null;
+      const projectedTeam2 = pg._projTeam2 ?? null;
+      delete pg._actualTeam1;
+      delete pg._actualTeam2;
       delete pg._projTeam1;
       delete pg._projTeam2;
-      return { ...g, team1, team2 };
+      return {
+        ...g,
+        actualTeam1,
+        actualTeam2,
+        team1,
+        team2,
+        projectedTeam1,
+        projectedTeam2,
+      };
     });
   }
 
@@ -720,9 +724,7 @@ function renderBracket(
   // disambiguate them (e.g. women's 2025 has two "Spokane" pods and two "Birmingham" pods).
   const allRegionCodes = [...LEFT_REGIONS, ...RIGHT_REGIONS];
   const regionNameCount = {};
-  const projectedGames = isEditable
-    ? games
-    : buildProjectedGames(games, picksMap, picksMap2);
+  const projectedGames = buildProjectedGames(games, picksMap, picksMap2);
 
   allRegionCodes.forEach((c) => {
     const s = projectedGames.find((g) => g.sectionId === c);
@@ -749,42 +751,25 @@ function renderBracket(
     return base;
   }
 
-  // Helper: check whether the user's pick(s) for a game are absent from the
-  // game's actual teams. Returns true when a pick exists but neither pick matches team1/team2.
-  function isPickOutsideActual(originalGame, pickedTeamId, pickedTeamId2) {
-    const pickPresent = pickedTeamId != null || pickedTeamId2 != null;
-    if (!pickPresent) return false;
-    const inActual = (pickedTeamId != null && (originalGame.team1?.id === pickedTeamId || originalGame.team2?.id === pickedTeamId))
-      || (pickedTeamId2 != null && (originalGame.team1?.id === pickedTeamId2 || originalGame.team2?.id === pickedTeamId2));
-    return (originalGame.team1 || originalGame.team2) && !inActual;
+  function renderGame(game) {
+    const pickStatsForGame = pickStats.get(game.id) ?? null;
+    return scoringGameCardHtml(game, pickStatsForGame);
   }
 
-  function renderGame(game) {
-    if (isEditable) return editableGameCardHtml(game);
-    const pickedTeamId = picksMap.get(game.id) ?? null;
-    const pickedTeamId2 = picksMap2.get(game.id) ?? null;
-    const pickStatsForGame = pickStats.get(game.id) ?? null;
-    // Determine if the user's pick for this game is NOT among the actual teams
-    // (as opposed to the projected teams). In that case mark both rows incorrect.
-    const originalGame = games.find((g) => g.id === game.id) || {};
-    const markBothIncorrect = isPickOutsideActual(originalGame, pickedTeamId, pickedTeamId2);
-    
-    // Decide whether to display actual teams (for later rounds) or projected picks.
-    const useActualDisplay = (originalGame.round || game.round) >= 3 && (originalGame.team1 || originalGame.team2);
-    const displayGame = useActualDisplay ? originalGame : game;
-    const projectedTeam1Id = game.team1?.id ?? null;
-    const projectedTeam2Id = game.team2?.id ?? null;
-    return scoringGameCardHtml(
-      displayGame,
-      pickedTeamId,
-      pickedTeamId2,
-      pickStatsForGame,
-      projectedTeam1Id,
-      projectedTeam2Id,
-      originalGame.team1?.id ?? null,
-      originalGame.team2?.id ?? null,
-      markBothIncorrect,
-    );
+  const championshipGame = projectedGames.find((g) => g.round === 7) ?? null;
+  if (championshipGame) {
+    const pickedChampionId = picksMap.get(championshipGame.id) ?? null;
+    const pickedChampionId2 = picksMap2.get(championshipGame.id) ?? null;
+    if (pickedChampionId && pickedChampionId2) {
+      const team1 = bracketTeamById.get(pickedChampionId);
+      const team2 = bracketTeamById.get(pickedChampionId2);
+      if (team1 && team2) {
+        championshipGame._pickedChampionName = `${team1.name_short}/${team2.name_short}`;
+      }
+    } else if (pickedChampionId) {
+      championshipGame._pickedChampionName =
+        bracketTeamById.get(pickedChampionId)?.name_short ?? "TBD";
+    }
   }
 
   const regionGames = (code) =>
@@ -821,16 +806,6 @@ function renderBracket(
         <div class="col bracket-board-col bracket-board-col-final">${finalPanel}</div>
         <div class="col bracket-board-col">${rightPanels}</div>
       </div>`;
-
-  if (isEditable) attachEditableHandlers(container);
-  // Ensure champion label matches current selection after initial render
-  try {
-    updateChampionDisplay(
-      container.querySelector(".bracket-board") ?? container,
-    );
-  } catch (e) {
-    /* ignore if helper not available yet */
-  }
 }
 
 /**
@@ -926,331 +901,6 @@ function titleCase(s) {
 }
 
 // ────────────────────────────────────────────────────────────────
-// EDITABLE BRACKET – INTERACTION LOGIC
-// ────────────────────────────────────────────────────────────────
-
-function attachEditableHandlers(container) {
-  // Map bracket_position -> game element
-  const positionMap = new Map();
-  container.querySelectorAll(".bracket-game").forEach((el) => {
-    const pos = parseInt(el.dataset.bracketPosition);
-    if (!isNaN(pos)) positionMap.set(pos, el);
-  });
-
-  function determineTargetSlot(sourcePos, targetPos) {
-    const feeders = [];
-    container.querySelectorAll(".bracket-game").forEach((g) => {
-      const vp = parseInt(g.dataset.victorPosition);
-      const sp = parseInt(g.dataset.bracketPosition);
-      if (vp === targetPos) feeders.push(sp);
-    });
-    if (feeders.length === 2) {
-      feeders.sort((a, b) => a - b);
-      return sourcePos === feeders[0] ? 1 : 2;
-    }
-    return sourcePos < targetPos ? 1 : 2;
-  }
-
-  // Clear only the downstream options that were derived from `originPos`.
-  // If `originPos` is not supplied, defaults to `startPos` (full clear behavior).
-  function clearCascading(startPos, originPos = startPos) {
-    const gameEl = positionMap.get(startPos);
-    if (!gameEl) return;
-
-    const matchup = gameEl.querySelector(".matchup");
-    if (!matchup) return;
-
-    // Track whether any cleared option was selected so we can recurse downstream.
-    let clearedSelected = false;
-
-    const opts = [...matchup.querySelectorAll(".team-option")];
-    opts.forEach((opt) => {
-      // Only clear options that were created/derived from the originating source.
-      const optSource = opt.dataset.sourcePos ?? null;
-      if (optSource && String(optSource) === String(originPos)) {
-        const radio = opt.querySelector("input[type=radio]");
-        if (radio && radio.checked) clearedSelected = true;
-        // remove selection and provenance
-        if (radio) radio.checked = false;
-        opt.classList.add("placeholder");
-        opt.classList.remove("selected");
-        delete opt.dataset.teamId;
-        delete opt.dataset.teamName;
-        delete opt.dataset.teamSeed;
-        delete opt.dataset.teamLogo;
-        delete opt.dataset.sourcePos;
-        opt.innerHTML = `<span class="small text-muted fst-italic">TBD</span>`;
-      }
-    });
-
-    // If both slots are placeholders, mark matchup as TBD; otherwise ensure TBD is removed.
-    const stillPlaceholders = [...matchup.querySelectorAll('.team-option')].every((o) => o.classList.contains('placeholder'));
-    if (stillPlaceholders) matchup.classList.add('tbd');
-    else matchup.classList.remove('tbd');
-
-    // If a cleared option had been selected, recurse to downstream games to clear their derived options as well.
-    if (clearedSelected) {
-      const vp = parseInt(gameEl.dataset.victorPosition);
-      if (vp && positionMap.has(vp)) clearCascading(vp, originPos);
-    }
-  }
-
-  function propagateWinner(victorPos, sourcePos, team, sourceGameEl) {
-    const nextEl = positionMap.get(victorPos);
-    if (!nextEl) return;
-    const matchup = nextEl.querySelector(".matchup");
-    if (!matchup) return;
-
-    const slot = determineTargetSlot(sourcePos, victorPos);
-    const teamOpts = matchup.querySelectorAll(".team-option");
-    const targetOpt = teamOpts[slot - 1];
-    if (!targetOpt) return;
-
-    const prevTeamId = targetOpt.dataset.teamId || "";
-    const prevTeamSource = targetOpt.dataset.sourcePos ?? null;
-    const prevSelected = matchup.querySelector("input[type=radio]:checked");
-    const prevSelectedId = prevSelected ? prevSelected.value : "";
-
-    const nextGameId = nextEl.dataset.gameId;
-    const border = slot === 1 ? "border-bottom" : "";
-
-    targetOpt.classList.remove("placeholder", "selected");
-    targetOpt.dataset.teamId = team.id;
-    targetOpt.dataset.teamName = team.name_short;
-    targetOpt.dataset.teamSeed = team.seed;
-    targetOpt.dataset.teamLogo = team.logo_url ?? "";
-      // Mark provenance: which source bracket position produced this option
-      targetOpt.dataset.sourcePos = String(sourcePos);
-
-    const teamInner = team.isCombo
-      ? `<span class="badge bg-secondary text-white small">Play-In</span><span>${team.name_short}</span>`
-      : `${logoHtml(team)}<span class="text-muted small">${team.seed}</span><span>${team.name_short}</span>`;
-
-    targetOpt.innerHTML = `
-      <input class="form-check-input team-radio" type="radio"
-             name="pick_${nextGameId}" value="${team.id}"
-             id="g${nextGameId}_s${slot}" autocomplete="off" />
-      <label for="g${nextGameId}_s${slot}" class="form-check-label w-100 ms-2" style="cursor:pointer;">
-        <span class="d-flex align-items-center gap-2">
-          ${teamInner}
-        </span>
-      </label>`;
-
-    attachRadioHandler(
-      targetOpt.querySelector(".team-radio"),
-      positionMap,
-      propagateWinner,
-      clearCascading,
-      determineTargetSlot,
-    );
-
-    // If both slots filled, remove tbd class
-    const allFilled = [...matchup.querySelectorAll(".team-option")].every(
-      (o) => !o.classList.contains("placeholder"),
-    );
-    if (allFilled) matchup.classList.remove("tbd");
-
-    // Preserve the existing pick if it still points to a valid team option.
-    let selectionStillValid = false;
-    if (prevSelectedId) {
-      const radios = [...matchup.querySelectorAll("input[type=radio]")];
-      const matchingRadio = radios.find((r) => r.value === prevSelectedId);
-      if (matchingRadio) {
-        matchingRadio.checked = true;
-        matchingRadio.closest(".team-option")?.classList.add("selected");
-        selectionStillValid = true;
-      }
-    }
-
-    // Only clear downstream picks if the existing selection became impossible
-    // and that previous pick was derived from the same source we just changed.
-    if (!selectionStillValid && prevSelectedId) {
-      if (prevTeamSource && String(prevTeamSource) === String(sourcePos)) {
-        nextEl
-          .querySelectorAll("input[type=radio]")
-          .forEach((r) => (r.checked = false));
-        const nextVp = parseInt(nextEl.dataset.victorPosition);
-        if (nextVp && positionMap.has(nextVp)) clearCascading(nextVp, sourcePos);
-      }
-    }
-  }
-
-  container
-    .querySelectorAll(".team-option:not(.placeholder)")
-    .forEach((opt) => {
-      opt.addEventListener("click", function () {
-        const radio = this.querySelector("input[type=radio]");
-        if (radio) {
-          radio.checked = true;
-          radio.dispatchEvent(new Event("change", { bubbles: true }));
-        }
-      });
-    });
-
-  container.querySelectorAll(".team-radio").forEach((radio) => {
-    attachRadioHandler(
-      radio,
-      positionMap,
-      propagateWinner,
-      clearCascading,
-      determineTargetSlot,
-    );
-  });
-}
-
-function attachRadioHandler(
-  radio,
-  positionMap,
-  propagateWinner,
-  clearCascading,
-  determineTargetSlot,
-) {
-  if (!radio) return;
-  radio.addEventListener("change", function () {
-    const gameEl = this.closest(".bracket-game");
-    if (!gameEl) return;
-    const victorPos = parseInt(gameEl.dataset.victorPosition);
-    const sourcePos = parseInt(gameEl.dataset.bracketPosition);
-    const rawValue = this.value;
-    const isCombo = rawValue.includes(":");
-
-    // Mark selected visually
-    gameEl
-      .querySelectorAll(".team-option")
-      .forEach((o) => o.classList.remove("selected"));
-    const parentOpt = this.closest(".team-option");
-    if (parentOpt) parentOpt.classList.add("selected");
-
-    if (victorPos && positionMap.has(victorPos)) {
-      // Build a minimal team descriptor from the option's data attributes.
-      // For combo picks the id is "id1:id2" and we preserve that for cascading.
-      const opt = this.closest(".team-option");
-      const team = isCombo
-        ? {
-            isCombo: true,
-            id: rawValue,
-            id1: parseInt(rawValue.split(":")[0]),
-            id2: parseInt(rawValue.split(":")[1]),
-            name_short: opt?.dataset.teamName ?? "",
-            seed: "",
-            logo_url: "",
-          }
-        : {
-            id: parseInt(rawValue),
-            name_short: opt?.dataset.teamName ?? "",
-            seed: parseInt(opt?.dataset.teamSeed ?? "0") || 0,
-            logo_url: opt?.dataset.teamLogo ?? "",
-          };
-      propagateWinner(victorPos, sourcePos, team, gameEl);
-    }
-    gameEl.querySelector(".matchup")?.classList.remove("error");
-    // Update champion display when picks change
-    try {
-      const board = this.closest(".bracket-board");
-      if (board) updateChampionDisplay(board);
-    } catch (e) {
-      /* ignore */
-    }
-  });
-
-  // Also handle click on label/row
-  const opt = radio.closest(".team-option");
-  if (opt) {
-    opt.addEventListener("click", function (e) {
-      if (
-        e.target === radio ||
-        e.target.tagName === "LABEL" ||
-        e.target.tagName === "INPUT"
-      )
-        return;
-      radio.checked = true;
-      radio.dispatchEvent(new Event("change", { bubbles: true }));
-    });
-  }
-}
-
-// ────────────────────────────────────────────────────────────────
-// COLLECT PICKS FROM EDITABLE BRACKET
-// ────────────────────────────────────────────────────────────────
-
-/**
- * Returns a Map<gameId, {primary, secondary}> from checked radios in container.
- * primary: the team ID (number).
- * secondary: the second team ID for a play-in combo pick, or null.
- */
-function collectPicks(container) {
-  const picks = new Map();
-  container.querySelectorAll(".bracket-game").forEach((gameEl) => {
-    const gameId = parseInt(gameEl.dataset.gameId);
-    const checked = gameEl.querySelector("input[type=radio]:checked");
-    if (checked) {
-      const val = checked.value;
-      if (val.includes(":")) {
-        const parts = val.split(":");
-        picks.set(gameId, {
-          primary: parseInt(parts[0]),
-          secondary: parseInt(parts[1]),
-        });
-      } else {
-        picks.set(gameId, { primary: parseInt(val), secondary: null });
-      }
-    }
-  });
-  return picks;
-}
-
-/**
- * Highlights games missing a pick. Returns count of invalid games.
- */
-function validatePicks(container) {
-  let invalid = 0;
-  container.querySelectorAll(".bracket-game").forEach((gameEl) => {
-    const checked = gameEl.querySelector("input[type=radio]:checked");
-    const matchup = gameEl.querySelector(".matchup");
-    // Only validate games where both teams are known (not TBD)
-    const allOpts = [...(matchup?.querySelectorAll(".team-option") ?? [])];
-    const hasBothTeams =
-      allOpts.length === 2 &&
-      allOpts.every((o) => !o.classList.contains("placeholder"));
-    if (hasBothTeams && !checked) {
-      matchup?.classList.add("error");
-      invalid++;
-    }
-  });
-  return invalid;
-}
-
-// ────────────────────────────────────────────────────────────────
-// AUTOFILL
-// ────────────────────────────────────────────────────────────────
-
-/**
- * Randomly fills all un-picked valid games (round by round so propagation works).
- */
-function autofill(container) {
-  for (let round = 2; round <= 7; round++) {
-    container
-      .querySelectorAll(`.bracket-game[data-round="${round}"]`)
-      .forEach((gameEl) => {
-        const alreadyPicked = !!gameEl.querySelector(
-          "input[type=radio]:checked",
-        );
-        if (alreadyPicked) return;
-        const opts = [
-          ...gameEl.querySelectorAll(".team-option:not(.placeholder)"),
-        ];
-        if (opts.length < 2) return;
-        const chosen = opts[Math.floor(Math.random() * opts.length)];
-        const radio = chosen.querySelector("input[type=radio]");
-        if (radio) {
-          radio.checked = true;
-          radio.dispatchEvent(new Event("change", { bubbles: true }));
-        }
-      });
-  }
-}
-
-// ────────────────────────────────────────────────────────────────
 // ZOOM CONTROLS
 // ────────────────────────────────────────────────────────────────
 
@@ -1331,12 +981,7 @@ if (typeof module !== "undefined" && module.exports) {
     inferSectionId,
     makeComboTeam,
     renderBracket,
-    collectPicks,
-    validatePicks,
-    autofill,
     initZoomControls,
-    // Expose internal helpers for tests if needed:
-    updateChampionDisplay,
     titleCase,
     capitalize,
   };
