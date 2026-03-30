@@ -308,7 +308,12 @@ function wrongPickOverlayRowHtml(team, addBorder = false) {
   const border = addBorder ? "border-bottom" : "";
   return `
     <div class="team-option-scoring d-flex align-items-center px-3 py-2 wrong-pick-overlay ${border}">
-      ${buildTeamLabelHtml(team)}
+      <span class="d-flex align-items-center gap-2 w-100">
+        // ${logoHtml(team)}
+        <span class="text-muted small">${team.seed ?? ""}</span>
+        <span>${team.name_short}</span>
+        <span class="ms-auto"><span class="result-badge result-error" title="Incorrect" aria-hidden="true">&#10005;</span></span>
+      </span>
     </div>`;
 }
 
@@ -329,7 +334,7 @@ function scoringTeamRowHtml(
   const border = isLast ? "" : "border-bottom";
 
   const wrongPickHtml = wrongPickTeam
-    ? `<div class="wrong-pick-overlay mb-1">${buildTeamLabelHtml(wrongPickTeam)}</div>`
+    ? `<div class="wrong-pick-overlay mb-1"><span class="d-flex align-items-center gap-2 w-100"><span class="text-muted small">${wrongPickTeam.seed ?? ""}</span><span>${wrongPickTeam.name_short}</span><span class="ms-auto"><span class="result-badge result-error" title="Incorrect" aria-hidden="true">&#10005;</span></span></span></div>`
     : "";
 
   if (!team) {
@@ -339,17 +344,26 @@ function scoringTeamRowHtml(
   }
 
   const checkmark = isPicked
-    ? `<span class="badge bg-secondary">&#10003;</span>`
+    ? ""
     : "";
   const bold = isPicked ? "fw-bold" : "";
   const percentHtml = pickPercentHtml(team, pickStatsForGame);
-  const trailingHtml =
-    percentHtml || checkmark
-      ? `<span class="ms-auto d-flex align-items-center gap-2">${percentHtml}${checkmark}</span>`
-      : "";
+
+  // Show prominent result badges instead of background highlights.
+  // stateClass may be 'pick-correct', 'pick-incorrect', or 'pick-pending'.
+  let resultIcon = "";
+  if (stateClass === "pick-correct") {
+    resultIcon = `<span class="result-badge result-success" title="Correct" aria-hidden="true">&#10003;</span>`;
+  } else if (stateClass === "pick-incorrect") {
+    resultIcon = `<span class="result-badge result-error" title="Incorrect" aria-hidden="true">&#10005;</span>`;
+  }
+
+  const trailingHtml = percentHtml || resultIcon
+    ? `<span class="ms-auto d-flex align-items-center gap-2">${percentHtml}${resultIcon}</span>`
+    : "";
 
   return `
-    <div class="team-option-scoring d-flex align-items-center px-3 py-2 ${border} ${stateClass}">
+    <div class="team-option-scoring d-flex align-items-center px-3 py-2 ${border}">
       <span class="w-100">
         ${wrongPickHtml}
         <span class="d-flex align-items-center gap-2 w-100">
