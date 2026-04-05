@@ -360,7 +360,6 @@
           <td>${menPts}</td>
           <td>${womenPts}</td>
           <td><strong>${s.total_points}</strong></td>
-          <td>${s.possible}</td>
         </tr>`;
       }).join("");
 
@@ -372,7 +371,7 @@
                 <thead class="table-dark" style="background-color: var(--gold-light) !important;">
                   <tr>
                     <th>Rank</th><th>User</th><th>Office</th><th>Department</th>
-                    <th>Men's Pts</th><th>Women's Pts</th><th>Total</th><th>Possible</th>
+                    <th>Men's Pts</th><th>Women's Pts</th><th>Total</th>
                   </tr>
                 </thead>
                 <tbody>${rows}</tbody>
@@ -393,7 +392,6 @@
           <td>${escHtml(deptFullName(s.department))}</td>
           <td>${escHtml(s.champPick)}</td>
           <td><strong>${s.total_points}</strong></td>
-          <td>${s.possible}</td>
           <td><a href="my-bracket.html?sport=${sport}&bracketId=${s.id}" class="btn btn-sm btn-outline-secondary">View</a></td>
         </tr>`;
       }).join("");
@@ -406,7 +404,7 @@
                 <thead class="table-dark">
                   <tr>
                     <th>Rank</th><th>User</th><th>Office</th><th>Department</th>
-                    <th>Champion Pick</th><th>Points</th><th>Possible</th><th></th>
+                    <th>Champion Pick</th><th>Points</th><th></th>
                   </tr>
                 </thead>
                 <tbody>${rows}</tbody>
